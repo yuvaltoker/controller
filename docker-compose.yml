@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+        controller:
+                #image: test-changes-dlep:1.7
+                build:
+                    context: .
+                    dockerfile: ./Dockerfile
+                tty: true
+                stdin_open: true
+                depends_on:
+                    - rabbitmq
+                networks:
+                    - net1
+                environment:
+                    - RMQ_HOST=rabbitmq
+                volumes:
+                    - /home/user2/work/idf/controller/scripts:/controller-scripts    
+                container_name: controller
+        
+        rabbitmq:
+                image: rabbitmq:3.9.8-management-alpine
+                container_name: rabbitmq
+                networks:
+                    - net1
+                ports: 
+                    - "15672:15672"
+                    - "5672:5672"
+                healthcheck:
+                    test: ["CMD", "curl", "-f", "http://localhost:15672"]
+                    interval: 30s
+                    timeout: 10s
+                    retries: 5
+
+
+networks:
+    net1:
+        name: net1
+        driver: bridge
