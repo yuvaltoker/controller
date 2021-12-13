@@ -9,7 +9,6 @@ channel = connection.channel()
 channel.queue_declare(queue='pdfs')
 
 def on_request(ch, method, props, body):
-    print('im inside the response')
     response = 'im the response'
     ch.basic_publish(exchange='',
                      routing_key=props.reply_to,
