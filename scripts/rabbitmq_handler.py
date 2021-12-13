@@ -9,7 +9,7 @@ import os
 import logging
 import uuid
 
-class Rabbitmq_handler:
+class RabbitmqHandler:
     def __init__(self):
         self.queue_names = ['updates', 'results', 'pdfs']
 

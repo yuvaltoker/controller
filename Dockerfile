@@ -11,6 +11,14 @@ RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py && python ge
 RUN python -m pip install pika --upgrade
 RUN pip install --upgrade pip enum34
 
+##################################
+#      mongodb dependencies      #
+##################################
+# install python dependencies
+
+RUN python -m pip install pymongo pandas
+# if an error accurs check last comment on https://stackoverflow.com/questions/52857945/python2-installing-json-util
+
 ##################################################
 #      waiting for other containers service      #
 ##################################################
