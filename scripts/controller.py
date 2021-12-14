@@ -8,7 +8,7 @@ from pandas import DataFrame
 def rabbitmq_send_msg_example():
     print('im the rabbitmq example')
     rmq_handler = RabbitmqHandler()
-    print(rmq_handler.send_rpc('', 'pdfs', 'im the controller'))
+    print(rmq_handler.request_pdf())
 
 def mongodb_tests():
     print('im the mongodb example')

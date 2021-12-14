@@ -28,7 +28,7 @@ RUN chmod +x /wait
 
 RUN mkdir /controller-scripts
 
-## Add your application to the docker image (commented in case of working with volume)
+## Add your application to the docker image (comment out in case of working with volume)
 #ADD ./controller.py .
 #RUN chmod +x controller.py
 
