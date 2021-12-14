@@ -10,9 +10,9 @@ class MongodbHandler:
         self.password = os.getenv('MONGO_INITDB_ROOT_PASSWORD')
         self.db_name = os.getenv('DB_NAME')
         self.port = '27017'
-        self.connection = MongoClient('mongodb://root:example@mongodb:27017/')
+        #self.connection = MongoClient('mongodb://root:example@mongodb:27017/')
+        self.connection = MongoClient('mongodb://%s:%s@%s:%s/' %(self.user, self.password, 'mongodb', self.port))
         self.db = self.connection[self.db_name]
-        #self.client = MongoClient('mongodb://%s:%s@%s:%d/' %(user, password, 'mongodb', port))
         # creating db
         self.connection[self.db_name]
 

@@ -21,9 +21,8 @@ def mongodb_tests():
 
     # collection = mdb_handler.get_collection('example_collection')
     # if collection != None:
-    #     print(collection)
-    
+    #     print(collection) 
     mdb_handler.print_documents(mdb_handler.get_all_documents('example_collection'))
 
 if __name__ == '__main__':
-    mongodb_tests()
+    rabbitmq_send_msg_example()

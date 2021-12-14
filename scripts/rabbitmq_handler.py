@@ -11,7 +11,8 @@ import uuid
 
 class RabbitmqHandler:
     def __init__(self):
-        self.queue_names = ['updates', 'results', 'pdfs']
+        self.queue_names = os.getenv('QUEUE_NAMES').split(',')
+        #self.queue_names = ['updates', 'results', 'pdfs']
 
         self.rabbitmq_host = os.getenv('RMQ_HOST')
         self.connection = pika.BlockingConnection(
