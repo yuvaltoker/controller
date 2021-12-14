@@ -2,8 +2,9 @@ from pprint import PrettyPrinter
 from rabbitmq_handler import RabbitmqHandler
 from mongodb_handler import MongodbHandler
 from json import dumps, loads
-# for event handling (from https://stackoverflow.com/questions/6190468/how-to-trigger-function-on-value-change)
-from tkinter import *
+# for event handling
+from waiting import wait
+
 # for more convenient storing dictionaries
 from pandas import DataFrame
 
@@ -35,8 +36,14 @@ def make_test_list():
 def test_list_ready():
     rmq_handler.send('', 'updates', 'Test List Ready')
 
-def waiting_for_setup_ready():
+def is_setup_ready(setup):
+    return setup
+
+# creating an event handler for when getting a message when setup ready
+def setup_ready_event_handler():
     print('im waiting for setup ready')
+    rmq_handler.wait_for_message('setup_ready')
+    wait(lambda: is_setup_ready(rmq_handler.setup_ready), timeout_seconds=120, waiting_for="setup to be ready")
 
 def run_test():
     return 'uid of test'
@@ -45,7 +52,7 @@ def run_tests():
     print('im running the tests one by one')
     test_uid = run_test()
     rmq_handler('', 'results', test_uid)
-
+    
 def all_results_ready():
     rmq_handler.send('', 'updates', 'All Results Ready')
     link = rmq_handler.request_pdf()
@@ -54,12 +61,10 @@ def all_results_ready():
 def controller_flow():
     make_test_list()
     test_list_ready()
-    waiting_for_setup_ready()
+    setup_ready_event_handler()
     run_tests()
     all_results_ready()
 
 
-
-
 if __name__ == '__main__':
-    rabbitmq_send_msg_example()
+    controller_flow()

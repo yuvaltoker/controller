@@ -19,6 +19,12 @@ RUN pip install --upgrade pip enum34
 RUN python -m pip install pymongo pandas
 # if an error accurs check last comment on https://stackoverflow.com/questions/52857945/python2-installing-json-util
 
+#####################################
+#      controller dependencies      #
+#####################################
+# install wait package
+RUN python -m pip install waiting
+
 ##################################################
 #      waiting for other containers service      #
 ##################################################

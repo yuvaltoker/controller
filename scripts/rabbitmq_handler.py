@@ -25,6 +25,9 @@ class RabbitmqHandler:
             if queue_name == 'pdfs':
                 self.callback_queue_pdfs = result.method.queue
                 self.channel.basic_consume(queue=self.callback_queue_pdfs, on_message_callback=self.on_response_pdf, auto_ack=True)
+
+        # declaring state for when setup_ready
+        self.setup_ready = False
         
         
     def on_response_pdf(self, ch, method, props, body):
@@ -51,3 +54,14 @@ class RabbitmqHandler:
             exchange=msg_exchange,
             routing_key=msg_routing_key,
             body=msg_body)
+
+    def make_setup_ready(self, ch, method, properties, body):
+            self.setup_ready = True
+
+    def wait_for_message(self, routing_key):
+        
+
+        self.channel.basic_consume(queue=routing_key,
+                            auto_ack=True,
+                            on_message_callback=self.make_setup_ready)
+        self.channel.start_consuming()
