@@ -5,6 +5,10 @@ from json import dumps, loads
 # for event handling
 from waiting import wait
 
+# for threading function
+#from threading import Thread
+import multiprocessing
+
 # for more convenient storing dictionaries
 from pandas import DataFrame
 
@@ -30,28 +34,35 @@ def mongodb_tests():
 
 # first function to be called
 def make_test_list():
-    print('test list in proggress...')
-    print('test list ready')
+    print('ctrl: test list in proggress...')
+    print('ctrl: test list ready')
 
 def test_list_ready():
     rmq_handler.send('', 'updates', 'Test List Ready')
 
-def is_setup_ready(setup):
-    return setup
+def is_setup_ready():
+    return rmq_handler.setup_ready
 
 # creating an event handler for when getting a message when setup ready
 def setup_ready_event_handler():
-    print('im waiting for setup ready')
-    rmq_handler.wait_for_message('setup_ready')
-    wait(lambda: is_setup_ready(rmq_handler.setup_ready), timeout_seconds=120, waiting_for="setup to be ready")
+    print('ctrl: im waiting for setup ready')
+    #wait_thread = Thread(target=rmq_handler.wait_for_message, args=('setup_ready',))
+    wait_thread = multiprocessing.Process(target=rmq_handler.wait_for_message, args=('setup_ready',))
+    print('ctrl: after creating the wait_for_message thread')
+    wait_thread.start()
 
-def run_test():
-    return 'uid of test'
+    print('ctrl: after starting the wait_for_message thread')
+    wait(lambda: is_setup_ready(), timeout_seconds=120, waiting_for="setup to be ready")
+    wait_thread.terminate()
 
-def run_tests():
-    print('im running the tests one by one')
-    test_uid = run_test()
-    rmq_handler('', 'results', test_uid)
+def run_test(test_NO):
+    return 'ctrl: Test NO.%d' % test_NO
+
+def run_tests(num_of_tests):
+    print('ctrl: im running the tests one by one')
+    for index in range(num_of_tests):
+        test_uid = run_test()
+        rmq_handler.send('', 'results', test_uid)
     
 def all_results_ready():
     rmq_handler.send('', 'updates', 'All Results Ready')
@@ -62,7 +73,7 @@ def controller_flow():
     make_test_list()
     test_list_ready()
     setup_ready_event_handler()
-    run_tests()
+    run_tests(3)
     all_results_ready()
 
 

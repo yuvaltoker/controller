@@ -14,7 +14,7 @@ services:
                     - net1
                 environment:
                     - RMQ_HOST=rabbitmq
-                    - QUEUE_NAMES=updates,results,pdfs
+                    - QUEUE_NAMES=updates,results,pdfs,setup_ready
                     - MONGO_INITDB_ROOT_USERNAME=root
                     - MONGO_INITDB_ROOT_PASSWORD=example
                     - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/

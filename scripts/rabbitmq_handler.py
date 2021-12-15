@@ -9,6 +9,9 @@ import os
 import logging
 import uuid
 
+# for threading function
+from threading import Thread
+
 class RabbitmqHandler:
     def __init__(self):
         self.queue_names = os.getenv('QUEUE_NAMES').split(',')
@@ -56,6 +59,8 @@ class RabbitmqHandler:
             body=msg_body)
 
     def make_setup_ready(self, ch, method, properties, body):
+        print('rmq_handler: %s' %body)
+        if body == 'Setup Ready':
             self.setup_ready = True
 
     def wait_for_message(self, routing_key):
