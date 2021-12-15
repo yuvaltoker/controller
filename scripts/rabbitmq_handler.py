@@ -59,8 +59,6 @@ class RabbitmqHandler:
             self.setup_ready = True
 
     def wait_for_message(self, routing_key):
-        
-
         self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
                             on_message_callback=self.make_setup_ready)
