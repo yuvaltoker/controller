@@ -18,7 +18,7 @@ services:
                     - MONGO_INITDB_ROOT_USERNAME=root
                     - MONGO_INITDB_ROOT_PASSWORD=example
                     - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
-                    - DB_NAME=example_db
+                    - DB_NAME=rri
                 volumes:
                     - /home/user2/work/idf/controller/scripts:/controller-scripts    
                 container_name: controller

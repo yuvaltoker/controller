@@ -46,7 +46,9 @@ class MongodbHandler:
 
     def insert_document(self, collection_name, document):
         collection = self.db[collection_name]
-        collection.insert_one(document)
+        uid = collection.insert_one(document)
+        return uid.inserted_id
+        
 
     def insert_documents(self, collection_name, documents):
         collection = self.db[collection_name]
