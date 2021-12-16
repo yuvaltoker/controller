@@ -1,6 +1,8 @@
 from pprint import PrettyPrinter
 from rabbitmq_handler import RabbitmqHandler
+# for easy read/write on mongodb
 from mongodb_handler import MongodbHandler
+
 from json import dumps, loads
 # for event handling
 from waiting import wait
@@ -12,7 +14,16 @@ import multiprocessing
 # for more convenient storing dictionaries
 from pandas import DataFrame
 
+# for background waiting function, use multiproccecing
+from multiprocessing import Process,Value
+
+# for using a shared memory variables
+import ctypes
+
 rmq_handler = RabbitmqHandler()
+
+# variables to handle event proccess
+setup_ready = Value(ctypes.c_bool,False)
 
 def rabbitmq_send_msg_example():
     print('im the rabbitmq example')
@@ -41,7 +52,8 @@ def test_list_ready():
     rmq_handler.send('', 'updates', 'Test List Ready')
 
 def is_setup_ready():
-    return rmq_handler.setup_ready
+    setup_ready = Value(ctypes.c_bool,rmq_handler.setup_ready)
+    return setup_ready
 
 # creating an event handler for when getting a message when setup ready
 def setup_ready_event_handler():
@@ -56,12 +68,12 @@ def setup_ready_event_handler():
     wait_thread.terminate()
 
 def run_test(test_NO):
-    return 'ctrl: Test NO.%d' % test_NO
+    return 'Test NO.%d' % test_NO
 
 def run_tests(num_of_tests):
     print('ctrl: im running the tests one by one')
     for index in range(num_of_tests):
-        test_uid = run_test()
+        test_uid = run_test(index)
         rmq_handler.send('', 'results', test_uid)
     
 def all_results_ready():

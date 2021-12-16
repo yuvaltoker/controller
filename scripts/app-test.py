@@ -4,11 +4,14 @@ import os
 # for event handling
 from waiting import wait
 
-# for threading waiting function
-#from threading import Thread
-from multiprocessing import Process, Manager, Value
+# for background waiting function, use multiproccecing
+from multiprocessing import Process,Value
 
-manager = Manager()
+# for using a shared memory variables
+import ctypes
+
+# for easy read/write on mongodb
+from mongodb_handler import MongodbHandler
 
 
 connection = pika.BlockingConnection(

@@ -1,6 +1,9 @@
 import pika
 import os
 
+# for easy read/write on mongodb
+from mongodb_handler import MongodbHandler
+
 connection = pika.BlockingConnection(
     pika.ConnectionParameters(os.getenv('RMQ_HOST')))
 
