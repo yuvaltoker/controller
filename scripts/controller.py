@@ -79,14 +79,13 @@ def is_setup_ready():
 # creating an event handler for when getting a message when setup ready
 def setup_ready_event_handler():
     print('ctrl: im waiting for setup ready')
-    #wait_thread = Thread(target=rmq_handler.wait_for_message, args=('setup_ready',))
-    wait_thread = multiprocessing.Process(target=rmq_handler.wait_for_message, args=('setup_ready',))
-    print('ctrl: after creating the wait_for_message thread')
-    wait_thread.start()
+    setup_ready_lisenter = multiprocessing.Process(target=rmq_handler.wait_for_message, args=('setup_ready',))
+    print('ctrl: after creating the wait_for_message thread for setup ready')
+    setup_ready_lisenter.start()
 
-    print('ctrl: after starting the wait_for_message thread')
+    print('ctrl: after starting the setup ready listener')
     wait(lambda: is_setup_ready(), timeout_seconds=120, waiting_for="setup to be ready")
-    wait_thread.terminate()
+    setup_ready_lisenter.terminate()
 
 def run_test():
     json_document_result_example = '''{
@@ -104,7 +103,7 @@ def run_tests(num_of_tests):
         rmq_handler.send('', 'results', test_uid)
     
 def all_results_ready():
-    rmq_handler.send('', 'updates', 'All Results Ready')
+    rmq_handler.send('', 'all_results_ready', '')
     link = rmq_handler.request_pdf()
     rmq_handler.send('', 'updates', link)
 
