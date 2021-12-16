@@ -24,8 +24,6 @@ device_ids_ready = Value(ctypes.c_bool,False)
 all_results_ready = Value(ctypes.c_bool,False)
 pdf_ready = Value(ctypes.c_bool,False)
 
-def is_variable_ready(var):
-    return var
 
 def can_i_start_running():
     test_list_ready = Value(ctypes.c_bool,rmq_handler.test_list_ready)
@@ -39,37 +37,6 @@ def are_all_results_ready():
 def is_pdf_ready():
     pdf_ready = Value(ctypes.c_bool,rmq_handler.pdf_ready)
     return pdf_ready
-
-def make_test_list_ready(ch, method, properties, body):
-    print('app: %s' % body)
-    if body == 'Test List Ready':
-        print('app: %s' % body)
-        global test_list_ready
-        test_list_ready = Value(ctypes.c_bool,False)
-        print('app: test_list_ready = %s'% (str(test_list_ready)))
-
-
-def wait_for_test_list(routing_key):
-    print('app: waiting for test list ready (in wait functin)')
-    rmq_handler.consuming
-    channel.basic_consume(queue=routing_key,
-                        auto_ack=True,
-                        on_message_callback=make_test_list_ready)
-    channel.start_consuming()
-
-def handle_results(ch, method, properties, body):
-    print('app: %s' % body)
-    if body == 'All Results Ready':
-        global all_results_ready
-        all_results_ready = Value(ctypes.c_bool,False)
-
-def wait_for_results(routing_key):
-    # waiting for results
-    print('app: waiting for results ready (in wait functin)')
-    channel.basic_consume(queue=routing_key,
-                        auto_ack=True,
-                        on_message_callback=handle_results)
-    channel.start_consuming()
 
 def create_setup():
     json_document_result_example = '''{
@@ -122,7 +89,7 @@ def results_event_handler():
     results_listener.terminate()
     all_results_ready_listener.terminate()
 
-def results_event_handler():
+def getting_pdf_event_handler():
     print('app: im waiting for pdf ready')
     pdf_ready_listener = multiprocessing.Process(target=rmq_handler.wait_for_message, args=('pdf_ready',))
     print('app: after creating the wait_for_message thread for pdf_ready')
@@ -137,14 +104,7 @@ def app_flow():
     before_running_event_handler()
     create_setup()
     results_event_handler()
-    getting_pdf_handler()
-    
-    #wait_thread = Thread(target=wait_for_results,args=('updates',))
-    wait_thread = Process(target=wait_for_results, args=('updates',))
-    wait_thread.start()
-
-    wait(lambda: is_variable_ready(all_results_ready), timeout_seconds=120, waiting_for="all results to be ready")
-    wait_thread.terminate()
+    getting_pdf_event_handler()
     print('app: controller thanks for everything, you may need to think of another name though')
 
 if __name__ == '__main__':
