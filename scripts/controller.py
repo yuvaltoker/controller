@@ -14,7 +14,7 @@ import multiprocessing
 # for more convenient storing dictionaries
 from pandas import DataFrame
 
-# for background waiting function, use multiproccecing
+# for background waiting function, use multiproccessing
 from multiprocessing import Process,Value
 
 # for using a shared memory variables
@@ -79,7 +79,7 @@ def is_setup_ready():
 # creating an event handler for when getting a message when setup ready
 def setup_ready_event_handler():
     print('ctrl: im waiting for setup ready')
-    setup_ready_lisenter = multiprocessing.Process(target=rmq_handler.wait_for_message, args=('setup_ready',))
+    setup_ready_lisenter = Process(target=rmq_handler.wait_for_message, args=('setup_ready',))
     print('ctrl: after creating the wait_for_message thread for setup ready')
     setup_ready_lisenter.start()
 

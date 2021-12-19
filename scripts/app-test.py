@@ -39,12 +39,12 @@ def is_pdf_ready():
     return pdf_ready
 
 def create_setup():
-    json_document_result_example = '''{
+    json_document_setup_example = '''{
 	    "ConfigType": "TestConfig",
 	    "RadioType": "NNN",
 	    "TesterName": "John Doe",
 	    "TestReason": "New version release",
-	    "SelectedDevice": <uid>,
+	    "SelectedDevice": "<uid>",
 	    "TimeStamp": "26-04-2021 14:15:16.297",
 	    "SuitesToRun": [
 	    	"dlep/dlep-8175.tdf",
@@ -52,7 +52,7 @@ def create_setup():
 	    ]
     }
     '''
-    uid = mdb_handler.insert_document('Test Results', loads(json_document_result_example))
+    uid = mdb_handler.insert_document('Test Results', loads(json_document_setup_example))
 
     print('app: sending set up ready')
     rmq_handler.send('', 'setup_ready', uid)
@@ -61,25 +61,25 @@ def create_setup():
 # creating an event handler for when getting a message when test list ready and got devices
 def before_running_event_handler():
     print('app: im waiting for test list and devices ready')
-    test_list_ready_listener = multiprocessing.Process(target=rmq_handler.wait_for_message, args=('test_list_ready',))
+    test_list_ready_listener = Process(target=rmq_handler.wait_for_message, args=('test_list_ready',))
     print('app: after creating the wait_for_message thread for test list')
 
-    device_ids__ready_listener = multiprocessing.Process(target=rmq_handler.wait_for_message, args=('device_ids',))
-    print('app: after creating the wait_for_message thread for device ids')
+    # device_ids__ready_listener = Process(target=rmq_handler.wait_for_message, args=('device_ids',))
+    # print('app: after creating the wait_for_message thread for device ids')
 
     test_list_ready_listener.start()
-    device_ids__ready_listener.start()
+    # device_ids__ready_listener.start()
     print('app: after starting before running listeners (test_list and device_ids)')
     wait(lambda: can_i_start_running(), timeout_seconds=120, waiting_for="test list and device list to be ready")
     test_list_ready_listener.terminate()
-    device_ids__ready_listener.terminate()
+    # device_ids__ready_listener.terminate()
 
 def results_event_handler():
     print('app: im waiting for results ready')
-    results_listener = multiprocessing.Process(target=rmq_handler.wait_for_message, args=('results',))
+    results_listener = Process(target=rmq_handler.wait_for_message, args=('results',))
     print('app: after creating the wait_for_message thread for results')
 
-    all_results_ready_listener = multiprocessing.Process(target=rmq_handler.wait_for_message, args=('all_results_ready',))
+    all_results_ready_listener = Process(target=rmq_handler.wait_for_message, args=('all_results_ready',))
     print('app: after creating the wait_for_message thread for all results')
 
     results_listener.start()
@@ -91,7 +91,7 @@ def results_event_handler():
 
 def getting_pdf_event_handler():
     print('app: im waiting for pdf ready')
-    pdf_ready_listener = multiprocessing.Process(target=rmq_handler.wait_for_message, args=('pdf_ready',))
+    pdf_ready_listener = Process(target=rmq_handler.wait_for_message, args=('pdf_ready',))
     print('app: after creating the wait_for_message thread for pdf_ready')
 
     pdf_ready_listener.start()

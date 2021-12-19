@@ -10,6 +10,8 @@ RUN apt install -y python curl
 RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py && python get-pip.py
 RUN python -m pip install pika --upgrade
 RUN pip install --upgrade pip enum34
+# for multiproccessing-
+RUN pip install mpire
 
 ##################################
 #      mongodb dependencies      #
