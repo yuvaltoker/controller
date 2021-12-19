@@ -9,8 +9,13 @@ import os
 import logging
 import uuid
 
-# for threading function
-from threading import Thread
+import sys
+
+import time
+
+import ctypes
+
+from multiprocessing import Value
 
 class RabbitmqHandler:
     def __init__(self):
@@ -31,15 +36,15 @@ class RabbitmqHandler:
 
 
         # declaring state for when test_list_ready
-        self.test_list_ready = False
+        self.test_list_ready = Value(ctypes.c_bool,False)
         # declaring state for when device_ids_ready
-        self.device_ids_ready = False
+        self.device_ids_ready = Value(ctypes.c_bool,False)
         # declaring state for when setup_ready
-        self.setup_ready = False    
+        self.setup_ready = Value(ctypes.c_bool,False)    
         # declaring state for when all_results_ready
-        self.all_results_ready = False
+        self.all_results_ready = Value(ctypes.c_bool,False)
         # declaring state for when pdf_ready
-        self.pdf_ready = False
+        self.pdf_ready = Value(ctypes.c_bool,False)
         
         
     def on_response_pdf(self, ch, method, props, body):
@@ -68,26 +73,37 @@ class RabbitmqHandler:
             body=msg_body)
 
     def make_test_list_ready(self, ch, method, properties, body):
-        print('rmq_handler: test list ready%s' %body)
+        print('rmq_handler: test list ready - %s' %body)
+        sys.stdout.flush()
+        time.sleep(1)
         self.test_list_ready = True
 
     def make_device_ids_ready(self, ch, method, properties, body):
-        print('rmq_handler: device ids ready%s' %body)
+        print('rmq_handler: device ids ready - %s' %body)
+        sys.stdout.flush()
+        time.sleep(1)
         self.device_ids_ready = True
 
     def make_setup_ready(self, ch, method, properties, body):
-        print('rmq_handler: setup ready%s' %body)
+        print('rmq_handler: setup ready - %s' %body)
+        sys.stdout.flush()
+        time.sleep(1)
         self.setup_ready = True
 
     def print_result(self, ch, method, properties, body):
         print('rmq_handler: got result - %s' %body)
+        sys.stdout.flush()
 
     def make_all_results_ready(self, ch, method, properties, body):
-        print('rmq_handler: all results ready%s' %body)
+        print('rmq_handler: all results ready - %s' %body)
+        sys.stdout.flush()
+        time.sleep(1)
         self.all_results_ready = True
 
     def make_pdf_ready(self, ch, method, properties, body):
-        print('rmq_handler: pdf ready%s' %body)
+        print('rmq_handler: pdf ready - %s' %body)
+        sys.stdout.flush()
+        time.sleep(1)
         self.pdf_ready = True
 
     def wait_for_message(self, routing_key):

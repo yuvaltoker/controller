@@ -12,7 +12,8 @@ channel = connection.channel()
 channel.queue_declare(queue='pdfs')
 
 def on_request(ch, method, props, body):
-    response = 'PDF Ready'
+    response = 'I am link to pdf, cant you see?'
+    print('report-generator: sending link - %s' % response)
     ch.basic_publish(exchange='',
                      routing_key=props.reply_to,
                      properties=pika.BasicProperties(correlation_id = \

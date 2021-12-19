@@ -20,6 +20,9 @@ from multiprocessing import Process,Value
 # for using a shared memory variables
 import ctypes
 
+# for delay use
+import time
+
 rmq_handler = RabbitmqHandler()
 mdb_handler = MongodbHandler()
 
@@ -47,6 +50,7 @@ def mongodb_tests():
 # first function to be called
 def make_test_list():
     print('ctrl: test list in proggress...')
+    time.sleep(1)
     json_document_test_suits_example = '''{
 	"ConfigType": "AvailableTestSuites",
 	"TestSuites": [
@@ -80,11 +84,10 @@ def is_setup_ready():
 def setup_ready_event_handler():
     print('ctrl: im waiting for setup ready')
     setup_ready_lisenter = Process(target=rmq_handler.wait_for_message, args=('setup_ready',))
-    print('ctrl: after creating the wait_for_message thread for setup ready')
-    setup_ready_lisenter.start()
 
-    print('ctrl: after starting the setup ready listener')
+    setup_ready_lisenter.start()
     wait(lambda: is_setup_ready(), timeout_seconds=120, waiting_for="setup to be ready")
+    time.sleep(3)
     setup_ready_lisenter.terminate()
 
 def run_test():
@@ -100,17 +103,23 @@ def run_tests(num_of_tests):
     print('ctrl: im running the tests one by one')
     for index in range(num_of_tests):
         test_uid = run_test()
-        rmq_handler.send('', 'results', test_uid)
+        rmq_handler.send('', 'results', str(test_uid))
+        time.sleep(1)
     
 def all_results_ready():
     rmq_handler.send('', 'all_results_ready', '')
+    time.sleep(3)
     link = rmq_handler.request_pdf()
-    rmq_handler.send('', 'updates', link)
+    time.sleep(3)
+    rmq_handler.send('', 'pdf_ready', link)
+    
 
 def controller_flow():
     make_test_list()
     setup_ready_event_handler()
+    time.sleep(1)
     run_tests(3)
+    time.sleep(3)
     all_results_ready()
 
 

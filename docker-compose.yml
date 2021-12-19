@@ -14,14 +14,55 @@ services:
                     - net1
                 environment:
                     - RMQ_HOST=rabbitmq
-                    - QUEUE_NAMES=updates,results,pdfs,setup_ready
+                    - QUEUE_NAMES=test_list,setup_ready,results,all_results_ready,pdfs,pdf_ready
                     - MONGO_INITDB_ROOT_USERNAME=root
                     - MONGO_INITDB_ROOT_PASSWORD=example
                     - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
                     - DB_NAME=rri
                 volumes:
                     - /home/user2/work/idf/controller/scripts:/controller-scripts    
-                container_name: controller
+
+        report-generator:
+                #image: test-changes-dlep:1.7
+                build:
+                    context: .
+                    dockerfile: ./Dockerfile
+                tty: true
+                stdin_open: true
+                depends_on:
+                    - rabbitmq
+                networks:
+                    - net1
+                environment:
+                    - RMQ_HOST=rabbitmq
+                    - QUEUE_NAMES=pdfs
+                    - MONGO_INITDB_ROOT_USERNAME=root
+                    - MONGO_INITDB_ROOT_PASSWORD=example
+                    - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
+                    - DB_NAME=rri
+                volumes:
+                    - /home/user2/work/idf/controller/scripts:/controller-scripts    
+
+        app:
+                #image: test-changes-dlep:1.7
+                build:
+                    context: .
+                    dockerfile: ./Dockerfile
+                tty: true
+                stdin_open: true
+                depends_on:
+                    - rabbitmq
+                networks:
+                    - net1
+                environment:
+                    - RMQ_HOST=rabbitmq
+                    - QUEUE_NAMES=test_list,device_ids,setup_ready,results,all_results_ready,pdf_ready
+                    - MONGO_INITDB_ROOT_USERNAME=root
+                    - MONGO_INITDB_ROOT_PASSWORD=example
+                    - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
+                    - DB_NAME=rri
+                volumes:
+                    - /home/user2/work/idf/controller/scripts:/controller-scripts    
         
         rabbitmq:
                 image: rabbitmq:3.9.8-management-alpine
