@@ -77,7 +77,7 @@ class RabbitmqHandler:
         sys.stdout.flush()
         time.sleep(1)
         self.tests_list_ready = Value(ctypes.c_bool,True)
-        print(self.tests_list_ready.value)
+        print(self.tests_list_ready)
 
     def make_device_ids_ready(self, ch, method, properties, body):
         print('rmq_handler: device ids ready - %s' %body)
@@ -108,7 +108,7 @@ class RabbitmqHandler:
         self.pdf_ready = Value(ctypes.c_bool,True)
 
     def wait_for_message(self, routing_key):
-        if routing_key == 'tests_lists':
+        if routing_key == 'tests_list':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
                             on_message_callback=self.make_tests_list_ready)

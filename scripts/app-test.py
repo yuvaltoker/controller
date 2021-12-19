@@ -2,7 +2,7 @@
 from waiting import wait
 
 # for background waiting function, use multiproccecing
-from multiprocessing import Process,Value
+from multiprocessing import Process,Value, Manager
 
 # for using a shared memory variables
 import ctypes
@@ -19,20 +19,14 @@ import time
 
 rmq_handler = RabbitmqHandler()
 mdb_handler = MongodbHandler()
+manager = Manager
 
-# variables to handle event proccess
-tests_list_ready = Value(ctypes.c_bool,False)
-device_ids_ready = Value(ctypes.c_bool,False)
-all_results_ready = Value(ctypes.c_bool,False)
-pdf_ready = Value(ctypes.c_bool,False)
+
 
 
 def can_i_start_running():
     tests_list_ready = rmq_handler.tests_list_ready.value
     device_ids_ready = rmq_handler.device_ids_ready.value
-    print(tests_list_ready)
-    print(device_ids_ready)
-    print(tests_list_ready and device_ids_ready)
     return (tests_list_ready and device_ids_ready)
 
 def are_all_results_ready():
@@ -67,7 +61,7 @@ def create_setup():
 # creating an event handler for when getting a message when test list ready and got devices
 def before_running_event_handler():
     print('app: im waiting for test list and devices ready')
-    tests_list_ready_listener = Process(target=rmq_handler.wait_for_message, args=('tests_list_ready',))
+    tests_list_ready_listener = Process(target=rmq_handler.wait_for_message, args=('tests_list',))
 
     # device_ids__ready_listener = Process(target=rmq_handler.wait_for_message, args=('device_ids',))
 
@@ -101,6 +95,15 @@ def getting_pdf_event_handler():
 
 
 def app_flow():
+    # variables to handle event proccess
+    tests_list_ready = Value(ctypes.c_bool,False)
+    device_ids_ready = Value(ctypes.c_bool,False)
+    all_results_ready = Value(ctypes.c_bool,False)
+    pdf_ready = Value(ctypes.c_bool,False)
+
+    # try to work with manager dictionary as https://stackoverflow.com/questions/32822013/python-share-values say.
+    # maybe the dictionary should be in rabbitmq instance, thus should be accessible via app-test.
+
     before_running_event_handler()
     create_setup()
     results_event_handler()
