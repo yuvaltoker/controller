@@ -14,7 +14,7 @@ services:
                     - net1
                 environment:
                     - RMQ_HOST=rabbitmq
-                    - QUEUE_NAMES=test_list,setup_ready,results,all_results_ready,pdfs,pdf_ready
+                    - QUEUE_NAMES=tests_list,setup_ready,results,all_results_ready,pdfs,pdf_ready
                     - MONGO_INITDB_ROOT_USERNAME=root
                     - MONGO_INITDB_ROOT_PASSWORD=example
                     - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
@@ -56,7 +56,7 @@ services:
                     - net1
                 environment:
                     - RMQ_HOST=rabbitmq
-                    - QUEUE_NAMES=test_list,device_ids,setup_ready,results,all_results_ready,pdf_ready
+                    - QUEUE_NAMES=tests_list,device_ids,setup_ready,results,all_results_ready,pdf_ready
                     - MONGO_INITDB_ROOT_USERNAME=root
                     - MONGO_INITDB_ROOT_PASSWORD=example
                     - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/

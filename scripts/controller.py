@@ -70,14 +70,12 @@ def make_test_list():
 		    }
 	    ]
     }'''
-    mdb_handler.insert_document('Configuration', loads(json_document_test_suits_example))
+    uid = mdb_handler.insert_document('Configuration', loads(json_document_test_suits_example))
     print('ctrl: test list ready')
-
-def test_list_ready():
-    rmq_handler.send('', 'updates', 'Test List Ready')
+    rmq_handler.send('', 'tests_list', str(uid))
 
 def is_setup_ready():
-    setup_ready = Value(ctypes.c_bool,rmq_handler.setup_ready)
+    setup_ready = rmq_handler.setup_ready.value
     return setup_ready
 
 # creating an event handler for when getting a message when setup ready

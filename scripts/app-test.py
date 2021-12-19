@@ -21,24 +21,26 @@ rmq_handler = RabbitmqHandler()
 mdb_handler = MongodbHandler()
 
 # variables to handle event proccess
-test_list_ready = Value(ctypes.c_bool,False)
+tests_list_ready = Value(ctypes.c_bool,False)
 device_ids_ready = Value(ctypes.c_bool,False)
 all_results_ready = Value(ctypes.c_bool,False)
 pdf_ready = Value(ctypes.c_bool,False)
 
 
 def can_i_start_running():
-    test_list_ready = bool(Value(ctypes.c_bool,rmq_handler.test_list_ready))
-    device_ids_ready = bool(Value(ctypes.c_bool,rmq_handler.device_ids_ready))
-    print(str(test_list_ready))
-    return (test_list_ready and device_ids_ready)
+    tests_list_ready = rmq_handler.tests_list_ready.value
+    device_ids_ready = rmq_handler.device_ids_ready.value
+    print(tests_list_ready)
+    print(device_ids_ready)
+    print(tests_list_ready and device_ids_ready)
+    return (tests_list_ready and device_ids_ready)
 
 def are_all_results_ready():
-    all_results_ready = Value(ctypes.c_bool,rmq_handler.all_results_ready)
+    all_results_ready = rmq_handler.all_results_ready.value
     return all_results_ready
 
 def is_pdf_ready():
-    pdf_ready = Value(ctypes.c_bool,rmq_handler.pdf_ready)
+    pdf_ready = rmq_handler.pdf_ready.value
     return pdf_ready
 
 def create_setup():
@@ -65,15 +67,15 @@ def create_setup():
 # creating an event handler for when getting a message when test list ready and got devices
 def before_running_event_handler():
     print('app: im waiting for test list and devices ready')
-    test_list_ready_listener = Process(target=rmq_handler.wait_for_message, args=('test_list_ready',))
+    tests_list_ready_listener = Process(target=rmq_handler.wait_for_message, args=('tests_list_ready',))
 
     # device_ids__ready_listener = Process(target=rmq_handler.wait_for_message, args=('device_ids',))
 
-    test_list_ready_listener.start()
+    tests_list_ready_listener.start()
     # device_ids__ready_listener.start()
     wait(lambda: can_i_start_running(), timeout_seconds=120, waiting_for="test list and device list to be ready")
     time.sleep(3)
-    test_list_ready_listener.terminate()
+    tests_list_ready_listener.terminate()
     # device_ids__ready_listener.terminate()
 
 def results_event_handler():

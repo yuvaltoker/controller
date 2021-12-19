@@ -35,10 +35,10 @@ class RabbitmqHandler:
                 self.channel.basic_consume(queue=self.callback_queue_pdfs, on_message_callback=self.on_response_pdf, auto_ack=True)
 
 
-        # declaring state for when test_list_ready
-        self.test_list_ready = Value(ctypes.c_bool,False)
+        # declaring state for when tests_list_ready
+        self.tests_list_ready = Value(ctypes.c_bool,False)
         # declaring state for when device_ids_ready
-        self.device_ids_ready = Value(ctypes.c_bool,False)
+        self.device_ids_ready = Value(ctypes.c_bool,True)
         # declaring state for when setup_ready
         self.setup_ready = Value(ctypes.c_bool,False)    
         # declaring state for when all_results_ready
@@ -72,23 +72,24 @@ class RabbitmqHandler:
             routing_key=msg_routing_key,
             body=msg_body)
 
-    def make_test_list_ready(self, ch, method, properties, body):
+    def make_tests_list_ready(self, ch, method, properties, body):
         print('rmq_handler: test list ready - %s' %body)
         sys.stdout.flush()
         time.sleep(1)
-        self.test_list_ready = True
+        self.tests_list_ready = Value(ctypes.c_bool,True)
+        print(self.tests_list_ready.value)
 
     def make_device_ids_ready(self, ch, method, properties, body):
         print('rmq_handler: device ids ready - %s' %body)
         sys.stdout.flush()
         time.sleep(1)
-        self.device_ids_ready = True
+        self.device_ids_ready = Value(ctypes.c_bool,True)
 
     def make_setup_ready(self, ch, method, properties, body):
         print('rmq_handler: setup ready - %s' %body)
         sys.stdout.flush()
         time.sleep(1)
-        self.setup_ready = True
+        self.setup_ready = Value(ctypes.c_bool,True)
 
     def print_result(self, ch, method, properties, body):
         print('rmq_handler: got result - %s' %body)
@@ -98,19 +99,19 @@ class RabbitmqHandler:
         print('rmq_handler: all results ready - %s' %body)
         sys.stdout.flush()
         time.sleep(1)
-        self.all_results_ready = True
+        self.all_results_ready = Value(ctypes.c_bool,True)
 
     def make_pdf_ready(self, ch, method, properties, body):
         print('rmq_handler: pdf ready - %s' %body)
         sys.stdout.flush()
         time.sleep(1)
-        self.pdf_ready = True
+        self.pdf_ready = Value(ctypes.c_bool,True)
 
     def wait_for_message(self, routing_key):
-        if routing_key == 'test_lists':
+        if routing_key == 'tests_lists':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
-                            on_message_callback=self.make_test_list_ready)
+                            on_message_callback=self.make_tests_list_ready)
 
         if routing_key == 'setup_ready':
             self.channel.basic_consume(queue=routing_key,
