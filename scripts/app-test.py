@@ -2,7 +2,7 @@
 from waiting import wait
 
 # for background waiting function, use multiproccecing
-from multiprocessing import Process,Value, Manager
+from multiprocessing import Process, Value, Manager
 
 # for using a shared memory variables
 import ctypes
@@ -19,15 +19,15 @@ import time
 
 rmq_handler = RabbitmqHandler()
 mdb_handler = MongodbHandler()
-manager = Manager
-
-
+manager = Manager()
+flags = manager.dict()
 
 
 def can_i_start_running():
-    tests_list_ready = rmq_handler.tests_list_ready.value
-    device_ids_ready = rmq_handler.device_ids_ready.value
-    return (tests_list_ready and device_ids_ready)
+    # tests_list_ready = flags['tests_list_ready']
+    # device_ids_ready = rmq_handler.device_ids_ready.value
+    print('app: tests_list_ready flag - {0}'.format(flags[1]['tests_list_ready']))
+    return flags[1]['tests_list_ready']
 
 def are_all_results_ready():
     all_results_ready = rmq_handler.all_results_ready.value
@@ -61,9 +61,9 @@ def create_setup():
 # creating an event handler for when getting a message when test list ready and got devices
 def before_running_event_handler():
     print('app: im waiting for test list and devices ready')
-    tests_list_ready_listener = Process(target=rmq_handler.wait_for_message, args=('tests_list',))
+    tests_list_ready_listener = Process(target=rmq_handler.wait_for_message, args=('tests_list', flags,))
 
-    # device_ids__ready_listener = Process(target=rmq_handler.wait_for_message, args=('device_ids',))
+    # device_ids__ready_listener = Process(target=rmq_handler.wait_for_message, args=('device_ids', flags,))
 
     tests_list_ready_listener.start()
     # device_ids__ready_listener.start()
@@ -74,8 +74,8 @@ def before_running_event_handler():
 
 def results_event_handler():
     print('app: im waiting for results ready')
-    results_listener = Process(target=rmq_handler.wait_for_message, args=('results',))
-    all_results_ready_listener = Process(target=rmq_handler.wait_for_message, args=('all_results_ready',))
+    results_listener = Process(target=rmq_handler.wait_for_message, args=('results', flags,))
+    all_results_ready_listener = Process(target=rmq_handler.wait_for_message, args=('all_results_ready', flags,))
 
     results_listener.start()
     all_results_ready_listener.start()
@@ -86,7 +86,7 @@ def results_event_handler():
 
 def getting_pdf_event_handler():
     print('app: im waiting for pdf ready')
-    pdf_ready_listener = Process(target=rmq_handler.wait_for_message, args=('pdf_ready',))
+    pdf_ready_listener = Process(target=rmq_handler.wait_for_message, args=('pdf_ready', flags,))
 
     pdf_ready_listener.start()
     wait(lambda: is_pdf_ready(), timeout_seconds=120, waiting_for="pdf to be ready")
@@ -96,10 +96,13 @@ def getting_pdf_event_handler():
 
 def app_flow():
     # variables to handle event proccess
-    tests_list_ready = Value(ctypes.c_bool,False)
-    device_ids_ready = Value(ctypes.c_bool,False)
-    all_results_ready = Value(ctypes.c_bool,False)
-    pdf_ready = Value(ctypes.c_bool,False)
+    # tests_list_ready = Value(ctypes.c_bool,False)
+    # device_ids_ready = Value(ctypes.c_bool,False)
+    # all_results_ready = Value(ctypes.c_bool,False)
+    # pdf_ready = Value(ctypes.c_bool,False)
+
+    # a dictionary stores the states that handles the events
+    #flags = manager.dict({'tests_list_ready' : False, 'device_ids_ready' : False, 'all_results_ready' : False, 'pdf_ready' : False})
 
     # try to work with manager dictionary as https://stackoverflow.com/questions/32822013/python-share-values say.
     # maybe the dictionary should be in rabbitmq instance, thus should be accessible via app-test.
@@ -111,4 +114,5 @@ def app_flow():
     print('app: controller thanks for everything, you may need to think of another name though')
 
 if __name__ == '__main__':
+    flags[1] = {'tests_list_ready' : False, 'device_ids_ready' : False, 'all_results_ready' : False, 'pdf_ready' : False}
     app_flow()

@@ -15,7 +15,7 @@ import multiprocessing
 from pandas import DataFrame
 
 # for background waiting function, use multiproccessing
-from multiprocessing import Process,Value
+from multiprocessing import Process,Value, Manager
 
 # for using a shared memory variables
 import ctypes
@@ -25,6 +25,8 @@ import time
 
 rmq_handler = RabbitmqHandler()
 mdb_handler = MongodbHandler()
+manager = Manager()
+flags = manager.dict()
 
 # variables to handle event proccess
 setup_ready = Value(ctypes.c_bool,False)
@@ -75,13 +77,14 @@ def make_test_list():
     rmq_handler.send('', 'tests_list', str(uid))
 
 def is_setup_ready():
-    setup_ready = rmq_handler.setup_ready.value
-    return setup_ready
+    # setup_ready = rmq_handler.setup_ready.value
+    print('ctrl: setup_ready flag - {0}'.format(flags[1]['setup_ready']))
+    return flags[1]['setup_ready']
 
 # creating an event handler for when getting a message when setup ready
 def setup_ready_event_handler():
     print('ctrl: im waiting for setup ready')
-    setup_ready_lisenter = Process(target=rmq_handler.wait_for_message, args=('setup_ready',))
+    setup_ready_lisenter = Process(target=rmq_handler.wait_for_message, args=('setup_ready',flags,))
 
     setup_ready_lisenter.start()
     wait(lambda: is_setup_ready(), timeout_seconds=120, waiting_for="setup to be ready")
@@ -122,4 +125,5 @@ def controller_flow():
 
 
 if __name__ == '__main__':
+    flags[1] = {'setup_ready' : False}
     controller_flow()

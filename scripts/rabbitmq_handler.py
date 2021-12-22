@@ -15,6 +15,8 @@ import time
 
 import ctypes
 
+import functools
+
 from multiprocessing import Value
 
 class RabbitmqHandler:
@@ -72,70 +74,96 @@ class RabbitmqHandler:
             routing_key=msg_routing_key,
             body=msg_body)
 
-    def make_tests_list_ready(self, ch, method, properties, body):
+    def make_tests_list_ready(self, ch, method, properties, body, flags):
         print('rmq_handler: test list ready - %s' %body)
         sys.stdout.flush()
         time.sleep(1)
-        self.tests_list_ready = Value(ctypes.c_bool,True)
-        print(self.tests_list_ready)
+        # changing the specific flag's state
+        temp_list = flags[1]
+        temp_list['tests_list_ready'] = True
+        flags[1] = temp_list
 
-    def make_device_ids_ready(self, ch, method, properties, body):
+        print('tests_list_ready flag - %s' % flags[1]['tests_list_ready'])
+        self.tests_list_ready = Value(ctypes.c_bool,True)
+        #print(self.tests_list_ready)
+
+    def make_device_ids_ready(self, ch, method, properties, body, flags):
         print('rmq_handler: device ids ready - %s' %body)
         sys.stdout.flush()
         time.sleep(1)
+        # changing the specific flag's state
+        temp_list = flags[1]
+        temp_list['device_ids'] = True
+        flags[1] = temp_list
+
         self.device_ids_ready = Value(ctypes.c_bool,True)
 
-    def make_setup_ready(self, ch, method, properties, body):
+    def make_setup_ready(self, ch, method, properties, body, flags):
         print('rmq_handler: setup ready - %s' %body)
         sys.stdout.flush()
         time.sleep(1)
+        # changing the specific flag's state
+        temp_list = flags[1]
+        temp_list['setup_ready'] = True
+        flags[1] = temp_list
+
         self.setup_ready = Value(ctypes.c_bool,True)
 
     def print_result(self, ch, method, properties, body):
         print('rmq_handler: got result - %s' %body)
         sys.stdout.flush()
 
-    def make_all_results_ready(self, ch, method, properties, body):
+    def make_all_results_ready(self, ch, method, properties, body, flags):
         print('rmq_handler: all results ready - %s' %body)
         sys.stdout.flush()
         time.sleep(1)
+        # changing the specific flag's state
+        temp_list = flags[1]
+        temp_list['all_results_ready'] = True
+        flags[1] = temp_list
+
         self.all_results_ready = Value(ctypes.c_bool,True)
 
-    def make_pdf_ready(self, ch, method, properties, body):
+    def make_pdf_ready(self, ch, method, properties, body, flags):
         print('rmq_handler: pdf ready - %s' %body)
         sys.stdout.flush()
         time.sleep(1)
+        # changing the specific flag's state
+        temp_list = flags[1]
+        temp_list['pdf_ready'] = True
+        flags[1] = temp_list
+
         self.pdf_ready = Value(ctypes.c_bool,True)
 
-    def wait_for_message(self, routing_key):
+    def wait_for_message(self, routing_key, flags):
         if routing_key == 'tests_list':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
-                            on_message_callback=self.make_tests_list_ready)
+                            on_message_callback=lambda ch, method, properties, body: self.make_tests_list_ready(ch, method, properties, body, flags))
 
         if routing_key == 'setup_ready':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
-                            on_message_callback=self.make_setup_ready)
+                            on_message_callback=lambda ch, method, properties, body: self.make_setup_ready(ch, method, properties, body, flags))
 
         if routing_key == 'device_ids':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
-                            on_message_callback=self.make_device_ids_ready)
+                            on_message_callback=lambda ch, method, properties, body: self.make_device_ids_ready(ch, method, properties, body, flags))
 
         if routing_key == 'results':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
-                            on_message_callback=self.print_result)
+                            on_message_callback=lambda ch, method, properties, body: self.print_result(ch, method, properties, body))
 
         if routing_key == 'all_results_ready':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
-                            on_message_callback=self.make_all_results_ready)
+                            on_message_callback=lambda ch, method, properties, body: self.make_all_results_ready(ch, method, properties, body, flags))
 
         if routing_key == 'pdf_ready':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
-                            on_message_callback=self.make_pdf_ready)
+                            on_message_callback=lambda ch, method, properties, body: self.make_pdf_ready(ch, method, properties, body, flags))
        
         self.channel.start_consuming()
