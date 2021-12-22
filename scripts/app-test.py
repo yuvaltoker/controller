@@ -30,12 +30,11 @@ def can_i_start_running():
     return flags[1]['tests_list_ready']
 
 def are_all_results_ready():
-    all_results_ready = rmq_handler.all_results_ready.value
-    return all_results_ready
+    return flags[1]['all_results_ready']
 
 def is_pdf_ready():
-    pdf_ready = rmq_handler.pdf_ready.value
-    return pdf_ready
+    print('app: pdf_ready flag - {0}'.format(flags[1]['pdf_ready']))
+    return flags[1]['pdf_ready']
 
 def create_setup():
     print('app: creating setup...')
