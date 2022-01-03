@@ -20,14 +20,38 @@ from json import dumps, loads
 import time
 
 
-rmq_handler = RabbitmqHandler()
+logging_file = 'app.log'
+rmq_handler = RabbitmqHandler(logging_file)
 mdb_handler = MongodbHandler()
 manager = Manager()
 flags = manager.dict()
 queue = Queue(-1)
 
+# testing logging
+logger = logging.getLogger('app')
+
+def configure_logger_logging():
+    logger.setLevel(logging.INFO)
+    # create file handler that logs debug and higher level messages
+    fh = logging.FileHandler(logging_file)
+    fh.setLevel(logging.DEBUG)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.ERROR)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
+    # add the handlers to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
+
+
 def app_listener_configurer():
+    logging.basicConfig(filename="ctrltest.log", level=logging.DEBUG)
     root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
     h = handlers.RotatingFileHandler('apptest.log', 'a', 300, 10)
     f = logging.Formatter('%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s')
     h.setFormatter(f)
@@ -56,14 +80,15 @@ def app_listener_process(queue, configurer):
                 logger.critical(record['message'])
         except Exception:
             import sys, traceback
-            #print('Whoops! Problem:', file=sys.stderr)
+            print('Whoops! Problem:')
             traceback.print_exc(file=sys.stderr)
 
 
 def can_i_start_running():
     #print('app: tests_list_ready flag - {0}'.format(flags[1]['tests_list_ready']))
     message = 'app: tests_list_ready flag - {0}'.format(flags[1]['tests_list_ready'])
-    queue.put({'level' : 'debug', 'message' : message})
+    #queue.put({'level' : 'debug', 'message' : message})
+    logger.debug(message)
     return flags[1]['tests_list_ready'] and flags[1]['device_ids_ready']
 
 def are_all_results_ready():
@@ -72,13 +97,15 @@ def are_all_results_ready():
 def is_pdf_ready():
     #print('app: pdf_ready flag - {0}'.format(flags[1]['pdf_ready']))
     message = 'app: pdf_ready flag - {0}'.format(flags[1]['pdf_ready'])
-    queue.put({'level' : 'debug', 'message' : message})
+    #queue.put({'level' : 'debug', 'message' : message})
+    logger.debug(message)
     return flags[1]['pdf_ready']
 
 def create_setup():
     #print('app: creating setup...')
     message = 'app: creating setup...'
-    queue.put({'level' : 'info', 'message' : message})
+    #queue.put({'level' : 'info', 'message' : message})
+    logger.info(message)
     time.sleep(1)
     json_document_setup_example = '''{
 	    "ConfigType": "TestConfig",
@@ -97,14 +124,16 @@ def create_setup():
 
     #print('app: sending set up ready')
     message = 'app: sending set up ready'
-    queue.put({'level' : 'info', 'message' : message})
+    #queue.put({'level' : 'info', 'message' : message})
+    logger.info(message)
     rmq_handler.send('', 'setup_ready', str(uid))   
 
 # creating an event handler for when getting a message when test list ready and got devices
 def before_running_event_handler():
     #print('app: im waiting for test list and devices ready')
     message = 'app: im waiting for test list and devices ready'
-    queue.put({'level' : 'info', 'message' : message})
+    #queue.put({'level' : 'info', 'message' : message})
+    logger.info(message)
     tests_list_ready_listener = Process(target=rmq_handler.wait_for_message, args=('tests_list', flags, queue))
 
     # device_ids__ready_listener = Process(target=rmq_handler.wait_for_message, args=('device_ids', flags, queue))
@@ -119,7 +148,8 @@ def before_running_event_handler():
 def results_event_handler():
     #print('app: im waiting for results ready')
     message = 'app: im waiting for results ready'
-    queue.put({'level' : 'info', 'message' : message})
+    #queue.put({'level' : 'info', 'message' : message})
+    logger.info(message)
     results_listener = Process(target=rmq_handler.wait_for_message, args=('results', flags, queue))
     all_results_ready_listener = Process(target=rmq_handler.wait_for_message, args=('all_results_ready', flags, queue))
 
@@ -133,7 +163,8 @@ def results_event_handler():
 def getting_pdf_event_handler():
     #print('app: im waiting for pdf ready')
     message = 'app: im waiting for pdf ready'
-    queue.put({'level' : 'info', 'message' : message})
+    #queue.put({'level' : 'info', 'message' : message})
+    logger.info(message)
     pdf_ready_listener = Process(target=rmq_handler.wait_for_message, args=('pdf_ready', flags, queue))
 
     pdf_ready_listener.start()
@@ -149,13 +180,14 @@ def app_flow():
     getting_pdf_event_handler()
     print('app: controller thanks for everything, you may need to think of another name though')
     # the next line ends the process listener
-    queue.put_nowait(None)
+    #queue.put_nowait(None)
 
 if __name__ == '__main__':
     flags[1] = {'tests_list_ready' : False, 'device_ids_ready' : True, 'all_results_ready' : False, 'pdf_ready' : False}
 
-    listener = Process(target=app_listener_process,
-                                       args=(queue, app_listener_configurer))
-    listener.start()
+    configure_logger_logging()
+    #listener = Process(target=app_listener_process,
+    #                                   args=(queue, app_listener_configurer))
+    #listener.start()
 
     app_flow()

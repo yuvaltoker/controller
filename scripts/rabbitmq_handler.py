@@ -19,8 +19,25 @@ import functools
 
 from multiprocessing import Value,Queue
 
+def configure_logger_logging(logger, logging_file):
+        logger.setLevel(logging.INFO)
+        # create file handler that logs debug and higher level messages
+        fh = logging.FileHandler(logging_file)
+        fh.setLevel(logging.DEBUG)
+        # create console handler with a higher log level
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.ERROR)
+        # create formatter and add it to the handlers
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        ch.setFormatter(formatter)
+        fh.setFormatter(formatter)
+        # add the handlers to logger
+        logger.addHandler(ch)
+        logger.addHandler(fh)
+
 class RabbitmqHandler:
-    def __init__(self):
+    def __init__(self, logging_file):
         self.queue_names = os.getenv('QUEUE_NAMES').split(',')
         #self.queue_names = ['updates', 'results', 'pdfs']
 
@@ -37,6 +54,11 @@ class RabbitmqHandler:
                 self.channel.basic_consume(queue=self.callback_queue_pdfs, on_message_callback=self.on_response_pdf, auto_ack=True)
 
 
+        # testing logging
+        logger = logging.getLogger('rmq')
+        configure_logger_logging(logger, logging_file)
+        self.logger = logger
+
         # declaring state for when tests_list_ready
         self.tests_list_ready = Value(ctypes.c_bool,False)
         # declaring state for when device_ids_ready
@@ -46,10 +68,7 @@ class RabbitmqHandler:
         # declaring state for when all_results_ready
         self.all_results_ready = Value(ctypes.c_bool,False)
         # declaring state for when pdf_ready
-        self.pdf_ready = Value(ctypes.c_bool,False)
-        
-        
-    
+        self.pdf_ready = Value(ctypes.c_bool,False) 
     
     def on_response_pdf(self, ch, method, props, body):
         if self.corr_id == props.correlation_id:
@@ -79,7 +98,8 @@ class RabbitmqHandler:
     def make_tests_list_ready(self, ch, method, properties, body, flags, logging_queue):
         #print('rmq_handler: test list ready - %s' %body)
         message = 'rmq_handler: test list ready - %s' % body
-        logging_queue.put({'level' : 'info', 'message' : message})
+        #logging_queue.put({'level' : 'info', 'message' : message})
+        self.logger.info(message)
         sys.stdout.flush()
         time.sleep(1)
         # changing the specific flag's state
@@ -89,15 +109,16 @@ class RabbitmqHandler:
 
         #print('tests_list_ready flag - %s' % flags[1]['tests_list_ready'])
         message = 'tests_list_ready flag - %s' % flags[1]['tests_list_ready']
-        logging_queue.put({'level' : 'debug', 'message' : message})
+        #logging_queue.put({'level' : 'debug', 'message' : message})
+        self.logger.debug(message)
         self.tests_list_ready = Value(ctypes.c_bool,True)
         #print(self.tests_list_ready)
 
     def make_device_ids_ready(self, ch, method, properties, body, flags, logging_queue):
         #print('rmq_handler: device ids ready - %s' %body)
         message = 'rmq_handler: device ids ready - %s' %body
-        logging_queue.put({'level' : 'info', 'message' : message})
-        sys.stdout.flush()
+        #logging_queue.put({'level' : 'info', 'message' : message})
+        self.logger.info(message)
         time.sleep(1)
         # changing the specific flag's state
         temp_list = flags[1]
@@ -109,7 +130,8 @@ class RabbitmqHandler:
     def make_setup_ready(self, ch, method, properties, body, flags, logging_queue):
         #print('rmq_handler: setup ready - %s' %body)
         message = 'rmq_handler: setup ready - %s' %body
-        logging_queue.put({'level' : 'info', 'message' : message})
+        #logging_queue.put({'level' : 'info', 'message' : message})
+        self.logger.info(message)
         sys.stdout.flush()
         time.sleep(1)
         # changing the specific flag's state
@@ -122,13 +144,15 @@ class RabbitmqHandler:
     def print_result(self, ch, method, properties, body, logging_queue):
         #print('rmq_handler: got result - %s' %body)
         message = 'rmq_handler: got result - %s' %body
-        logging_queue.put({'level' : 'info', 'message' : message})
+        #logging_queue.put({'level' : 'info', 'message' : message})
+        self.logger.info(message)
         sys.stdout.flush()
 
     def make_all_results_ready(self, ch, method, properties, body, flags, logging_queue):
         #print('rmq_handler: all results ready - %s' %body)
         message = 'rmq_handler: all results ready - %s' %body
-        logging_queue.put({'level' : 'info', 'message' : message})
+        #logging_queue.put({'level' : 'info', 'message' : message})
+        self.logger.info(message)
         sys.stdout.flush()
         time.sleep(1)
         # changing the specific flag's state
@@ -141,7 +165,8 @@ class RabbitmqHandler:
     def make_pdf_ready(self, ch, method, properties, body, flags, logging_queue):
         #print('rmq_handler: pdf ready - %s' %body)
         message = 'rmq_handler: pdf ready - %s' %body
-        logging_queue.put({'level' : 'info', 'message' : message})
+        #logging_queue.put({'level' : 'info', 'message' : message})
+        self.logger.info(message)
         sys.stdout.flush()
         time.sleep(1)
         # changing the specific flag's state

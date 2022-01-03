@@ -30,15 +30,50 @@ import time
 #              Code              #
 ##################################
 
-rmq_handler = RabbitmqHandler()
+logging_file = 'ctrl.log'
+rmq_handler = RabbitmqHandler(logging_file)
 mdb_handler = MongodbHandler()
 manager = Manager()
 flags = manager.dict()
 queue = Queue(-1)
 
+
+
+# testing logging
+logger = logging.getLogger('ctrl')
+
+def configure_logger_logging():
+    
+    logger.setLevel(logging.INFO)
+    # create file handler that logs debug and higher level messages
+    fh = logging.FileHandler(logging_file)
+    fh.setLevel(logging.DEBUG)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.ERROR)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
+    # add the handlers to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
+
+    # 'application' code
+    #logger.debug('debug message')
+    #logger.info('info message')
+    #logger.warn('warn message')
+    #logger.error('error message')
+    #logger.critical('critical message')
+
 def controller_listener_configurer():
+    #logging.basicConfig(filename="ctrltest.log", level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG)
     root = logging.getLogger()
-    h = handlers.RotatingFileHandler('ctrltest.log', 'a', 300, 10)
+    root.setLevel(logging.DEBUG)
+    #h = handlers.RotatingFileHandler('ctrltest.log', 'a', 300, 10)
+    h = logging.StreamHandler()
     f = logging.Formatter('%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s')
     h.setFormatter(f)
     root.addHandler(h)
@@ -91,7 +126,8 @@ def mongodb_tests():
 def make_test_list():
     #print('ctrl: test list in proggress...')
     message = 'ctrl: test list in proggress...'
-    queue.put({'level' : 'info', 'message' : message})
+    logger.info(message)
+    #queue.put({'level' : 'info', 'message' : message})
     time.sleep(1)
     json_document_test_suits_example = '''{
 	"ConfigType": "AvailableTestSuites",
@@ -115,21 +151,24 @@ def make_test_list():
     uid = mdb_handler.insert_document('Configuration', loads(json_document_test_suits_example))
     #print('ctrl: test list ready')
     message = 'ctrl: test list ready'
-    queue.put({'level' : 'info', 'message' : message})
+    #queue.put({'level' : 'info', 'message' : message})
+    logger.info(message)
     rmq_handler.send('', 'tests_list', str(uid))
 
 def is_setup_ready():
     # setup_ready = rmq_handler.setup_ready.value
     #print('ctrl: setup_ready flag - {0}'.format(flags[1]['setup_ready']))
     message = 'ctrl: setup_ready flag - {0}'.format(flags[1]['setup_ready'])
-    queue.put({'level' : 'debug', 'message' : message})
+    #queue.put({'level' : 'debug', 'message' : message})
+    logger.debug(message)
     return flags[1]['setup_ready']
 
 # creating an event handler for when getting a message when setup ready
 def setup_ready_event_handler():
     #print('ctrl: im waiting for setup ready')
     message = 'ctrl: im waiting for setup ready'
-    queue.put({'level' : 'info', 'message' : message})
+    #queue.put({'level' : 'info', 'message' : message})
+    logger.info(message)
     setup_ready_lisenter = Process(target=rmq_handler.wait_for_message, args=('setup_ready',flags,queue,))
 
     setup_ready_lisenter.start()
@@ -149,7 +188,8 @@ def run_test():
 def run_tests(num_of_tests):
     #print('ctrl: im running the tests one by one')
     message = 'ctrl: im running the tests one by one'
-    queue.put({'level' : 'info', 'message' : message})
+    #queue.put({'level' : 'info', 'message' : message})
+    logger.info(message)
     for index in range(num_of_tests):
         test_uid = run_test()
         rmq_handler.send('', 'results', str(test_uid))
@@ -171,14 +211,15 @@ def controller_flow():
     time.sleep(3)
     all_results_ready()
     # the next line ends the process listener
-    queue.put_nowait(None)
+    #queue.put_nowait(None)
 
 def main():
     flags[1] = {'setup_ready' : False}
-    
-    listener = Process(target=controller_listener_process,
-                                       args=(queue, controller_listener_configurer))
-    listener.start()
+
+    configure_logger_logging()
+    #listener = Process(target=controller_listener_process,
+    #                                   args=(queue, controller_listener_configurer))
+    #listener.start()
 
     controller_flow()
 
