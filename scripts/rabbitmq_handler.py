@@ -19,25 +19,30 @@ import functools
 
 from multiprocessing import Value,Queue
 
-def configure_logger_logging(logger, logging_file):
-        logger.setLevel(logging.INFO)
-        # create file handler that logs debug and higher level messages
-        fh = logging.FileHandler(logging_file)
-        fh.setLevel(logging.DEBUG)
-        # create console handler with a higher log level
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.ERROR)
+def configure_logger_logging(logger, logging_level, logging_file):
+        logger.setLevel(logging_level)
         # create formatter and add it to the handlers
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        ch.setFormatter(formatter)
-        fh.setFormatter(formatter)
+        # if there's a logging file
+        if logging_file is not None:
+            # create file handler that logs debug and higher level messages
+            file_handler = logging.FileHandler(logging_file)
+            file_handler.setLevel(logging_level)
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+            # setting logging level for the console handler
+            logging_level = logging.ERROR
+        # create console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging_level)
+        console_handler.setFormatter(formatter)
         # add the handlers to logger
-        logger.addHandler(ch)
-        logger.addHandler(fh)
+        logger.addHandler(console_handler)
+        
 
 class RabbitmqHandler:
-    def __init__(self, logging_file):
+    def __init__(self, logging_level, logging_file = None):
         self.queue_names = os.getenv('QUEUE_NAMES').split(',')
         #self.queue_names = ['updates', 'results', 'pdfs']
 
@@ -56,19 +61,9 @@ class RabbitmqHandler:
 
         # testing logging
         logger = logging.getLogger('rmq')
-        configure_logger_logging(logger, logging_file)
+        configure_logger_logging(logger, logging_level, logging_file)
         self.logger = logger
 
-        # declaring state for when tests_list_ready
-        self.tests_list_ready = Value(ctypes.c_bool,False)
-        # declaring state for when device_ids_ready
-        self.device_ids_ready = Value(ctypes.c_bool,True)
-        # declaring state for when setup_ready
-        self.setup_ready = Value(ctypes.c_bool,False)    
-        # declaring state for when all_results_ready
-        self.all_results_ready = Value(ctypes.c_bool,False)
-        # declaring state for when pdf_ready
-        self.pdf_ready = Value(ctypes.c_bool,False) 
     
     def on_response_pdf(self, ch, method, props, body):
         if self.corr_id == props.correlation_id:
@@ -95,31 +90,25 @@ class RabbitmqHandler:
             routing_key=msg_routing_key,
             body=msg_body)
 
-    def make_tests_list_ready(self, ch, method, properties, body, flags, logging_queue):
-        #print('rmq_handler: test list ready - %s' %body)
+    def make_tests_list_ready(self, ch, method, properties, body, flags):
         message = 'rmq_handler: test list ready - %s' % body
-        #logging_queue.put({'level' : 'info', 'message' : message})
         self.logger.info(message)
         sys.stdout.flush()
-        time.sleep(1)
+        #time.sleep(1)
         # changing the specific flag's state
         temp_list = flags[1]
         temp_list['tests_list_ready'] = True
         flags[1] = temp_list
 
-        #print('tests_list_ready flag - %s' % flags[1]['tests_list_ready'])
         message = 'tests_list_ready flag - %s' % flags[1]['tests_list_ready']
-        #logging_queue.put({'level' : 'debug', 'message' : message})
         self.logger.debug(message)
         self.tests_list_ready = Value(ctypes.c_bool,True)
-        #print(self.tests_list_ready)
 
-    def make_device_ids_ready(self, ch, method, properties, body, flags, logging_queue):
-        #print('rmq_handler: device ids ready - %s' %body)
+    def make_device_ids_ready(self, ch, method, properties, body, flags):
         message = 'rmq_handler: device ids ready - %s' %body
-        #logging_queue.put({'level' : 'info', 'message' : message})
         self.logger.info(message)
-        time.sleep(1)
+        sys.stdout.flush()
+        #time.sleep(1)
         # changing the specific flag's state
         temp_list = flags[1]
         temp_list['device_ids'] = True
@@ -127,13 +116,11 @@ class RabbitmqHandler:
 
         self.device_ids_ready = Value(ctypes.c_bool,True)
 
-    def make_setup_ready(self, ch, method, properties, body, flags, logging_queue):
-        #print('rmq_handler: setup ready - %s' %body)
+    def make_setup_ready(self, ch, method, properties, body, flags):
         message = 'rmq_handler: setup ready - %s' %body
-        #logging_queue.put({'level' : 'info', 'message' : message})
         self.logger.info(message)
         sys.stdout.flush()
-        time.sleep(1)
+        #time.sleep(1)
         # changing the specific flag's state
         temp_list = flags[1]
         temp_list['setup_ready'] = True
@@ -141,20 +128,16 @@ class RabbitmqHandler:
 
         self.setup_ready = Value(ctypes.c_bool,True)
 
-    def print_result(self, ch, method, properties, body, logging_queue):
-        #print('rmq_handler: got result - %s' %body)
+    def print_result(self, ch, method, properties, body):
         message = 'rmq_handler: got result - %s' %body
-        #logging_queue.put({'level' : 'info', 'message' : message})
         self.logger.info(message)
         sys.stdout.flush()
 
-    def make_all_results_ready(self, ch, method, properties, body, flags, logging_queue):
-        #print('rmq_handler: all results ready - %s' %body)
+    def make_all_results_ready(self, ch, method, properties, body, flags):
         message = 'rmq_handler: all results ready - %s' %body
-        #logging_queue.put({'level' : 'info', 'message' : message})
         self.logger.info(message)
         sys.stdout.flush()
-        time.sleep(1)
+        #time.sleep(1)
         # changing the specific flag's state
         temp_list = flags[1]
         temp_list['all_results_ready'] = True
@@ -162,13 +145,11 @@ class RabbitmqHandler:
 
         self.all_results_ready = Value(ctypes.c_bool,True)
 
-    def make_pdf_ready(self, ch, method, properties, body, flags, logging_queue):
-        #print('rmq_handler: pdf ready - %s' %body)
+    def make_pdf_ready(self, ch, method, properties, body, flags):
         message = 'rmq_handler: pdf ready - %s' %body
-        #logging_queue.put({'level' : 'info', 'message' : message})
         self.logger.info(message)
         sys.stdout.flush()
-        time.sleep(1)
+        #time.sleep(1)
         # changing the specific flag's state
         temp_list = flags[1]
         temp_list['pdf_ready'] = True
@@ -176,35 +157,35 @@ class RabbitmqHandler:
 
         self.pdf_ready = Value(ctypes.c_bool,True)
 
-    def wait_for_message(self, routing_key, flags, logging_queue):
+    def wait_for_message(self, routing_key, flags,):
         if routing_key == 'tests_list':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
-                            on_message_callback=lambda ch, method, properties, body: self.make_tests_list_ready(ch, method, properties, body, flags, logging_queue))
+                            on_message_callback=lambda ch, method, properties, body: self.make_tests_list_ready(ch, method, properties, body, flags))
 
         if routing_key == 'setup_ready':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
-                            on_message_callback=lambda ch, method, properties, body: self.make_setup_ready(ch, method, properties, body, flags, logging_queue))
+                            on_message_callback=lambda ch, method, properties, body: self.make_setup_ready(ch, method, properties, body, flags))
 
         if routing_key == 'device_ids':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
-                            on_message_callback=lambda ch, method, properties, body: self.make_device_ids_ready(ch, method, properties, body, flags, logging_queue))
+                            on_message_callback=lambda ch, method, properties, body: self.make_device_ids_ready(ch, method, properties, body, flags))
 
         if routing_key == 'results':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
-                            on_message_callback=lambda ch, method, properties, body: self.print_result(ch, method, properties, body, logging_queue))
+                            on_message_callback=lambda ch, method, properties, body: self.print_result(ch, method, properties, body))
 
         if routing_key == 'all_results_ready':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
-                            on_message_callback=lambda ch, method, properties, body: self.make_all_results_ready(ch, method, properties, body, flags, logging_queue))
+                            on_message_callback=lambda ch, method, properties, body: self.make_all_results_ready(ch, method, properties, body, flags))
 
         if routing_key == 'pdf_ready':
             self.channel.basic_consume(queue=routing_key,
                             auto_ack=True,
-                            on_message_callback=lambda ch, method, properties, body: self.make_pdf_ready(ch, method, properties, body, flags, logging_queue))
+                            on_message_callback=lambda ch, method, properties, body: self.make_pdf_ready(ch, method, properties, body, flags,))
        
         self.channel.start_consuming()

@@ -18,10 +18,7 @@ from waiting import wait
 from pandas import DataFrame
 
 # for background waiting function, use multiproccessing
-from multiprocessing import Process,Value,Manager,Queue
-
-# for using a shared memory variables
-import ctypes
+from multiprocessing import Process, Manager
 
 # for delay use
 import time
@@ -30,105 +27,42 @@ import time
 #              Code              #
 ##################################
 
-logging_file = 'ctrl.log'
-rmq_handler = RabbitmqHandler(logging_file)
+logging_file = None
+logging_level = logging.INFO
+rmq_handler = RabbitmqHandler(logging_level)
 mdb_handler = MongodbHandler()
 manager = Manager()
 flags = manager.dict()
-queue = Queue(-1)
 
-
-
-# testing logging
+# for logging
 logger = logging.getLogger('ctrl')
 
-def configure_logger_logging():
-    
-    logger.setLevel(logging.INFO)
-    # create file handler that logs debug and higher level messages
-    fh = logging.FileHandler(logging_file)
-    fh.setLevel(logging.DEBUG)
-    # create console handler with a higher log level
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.ERROR)
+def configure_logger_logging(logging_level):
+    logger.setLevel(logging_level)
     # create formatter and add it to the handlers
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
-    fh.setFormatter(formatter)
+    # if there's a logging file
+    if logging_file is not None:
+        # create file handler that logs debug and higher level messages
+        file_handler = logging.FileHandler(logging_file)
+        file_handler.setLevel(logging_level)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        # setting logging level for the console handler
+        logging_level = logging.ERROR
+    # create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging_level)
+    console_handler.setFormatter(formatter)
     # add the handlers to logger
-    logger.addHandler(ch)
-    logger.addHandler(fh)
-
-    # 'application' code
-    #logger.debug('debug message')
-    #logger.info('info message')
-    #logger.warn('warn message')
-    #logger.error('error message')
-    #logger.critical('critical message')
-
-def controller_listener_configurer():
-    #logging.basicConfig(filename="ctrltest.log", level=logging.DEBUG)
-    logging.basicConfig(level=logging.DEBUG)
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
-    #h = handlers.RotatingFileHandler('ctrltest.log', 'a', 300, 10)
-    h = logging.StreamHandler()
-    f = logging.Formatter('%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s')
-    h.setFormatter(f)
-    root.addHandler(h)
-
-# This is the listener process top-level loop: wait for logging events
-# (LogRecords)on the queue and handle them, quit when you get a None for a
-# LogRecord.
-def controller_listener_process(queue, configurer):
-    configurer()
-    while True:
-        try:
-            record = queue.get()
-            if record is None:  # We send this as a sentinel to tell the listener to quit.
-                break
-            logger = logging.getLogger()
-            if record['level'] is 'debug':
-                logger.debug(record['message'])
-            if record['level'] is 'info':
-                logger.info(record['message'])
-            if record['level'] is 'warning':
-                logger.warning(record['message'])
-            if record['level'] is 'error':
-                logger.error(record['message'])
-            if record['level'] is 'critical':
-                logger.critical(record['message'])
-        except Exception:
-            import sys, traceback
-            #print('Whoops! Problem:', file=sys.stderr)
-            traceback.print_exc(file=sys.stderr)
-
-def rabbitmq_send_msg_example():
-    print('im the rabbitmq example')
-    rmq_handler = RabbitmqHandler()
-    print(rmq_handler.request_pdf())
-
-def mongodb_tests():
-    print('im the mongodb example')
-    mdb_handler = MongodbHandler()
- 
-    # json_document_string = '{"item_name" : "AAB", "max_discount" : "10%", "batch_number" : "AAAAA", "price" : "900", "category" : "kitchen appliance"}'
-    # json_document_string = '[{"item_name" : "AA", "max_discount" : "10%", "batch_number" : "AAAAA", "price" : "900", "category" : "kitchen appliance"},{"item_name" : "AA", "max_discount" : "10%", "batch_number" : "AAAAA", "price" : "900", "category" : "kitchen appliance"}]'
-    # mdb_handler.insert_document('example_collection', loads(json_document_string))
-
-    # collection = mdb_handler.get_collection('example_collection')
-    # if collection != None:
-    #     print(collection) 
-    mdb_handler.print_documents(mdb_handler.get_all_documents('example_collection'))
+    logger.addHandler(console_handler)
 
 # first function to be called
 def make_test_list():
-    #print('ctrl: test list in proggress...')
     message = 'ctrl: test list in proggress...'
     logger.info(message)
-    #queue.put({'level' : 'info', 'message' : message})
-    time.sleep(1)
+    #time.sleep(1)
     json_document_test_suits_example = '''{
 	"ConfigType": "AvailableTestSuites",
 	"TestSuites": [
@@ -148,32 +82,25 @@ def make_test_list():
 		    }
 	    ]
     }'''
-    uid = mdb_handler.insert_document('Configuration', loads(json_document_test_suits_example))
-    #print('ctrl: test list ready')
+    uid = mdb_handler.insert_document('Configuration', loads(json_document_test_suits_example))  
     message = 'ctrl: test list ready'
-    #queue.put({'level' : 'info', 'message' : message})
     logger.info(message)
     rmq_handler.send('', 'tests_list', str(uid))
 
 def is_setup_ready():
-    # setup_ready = rmq_handler.setup_ready.value
-    #print('ctrl: setup_ready flag - {0}'.format(flags[1]['setup_ready']))
     message = 'ctrl: setup_ready flag - {0}'.format(flags[1]['setup_ready'])
-    #queue.put({'level' : 'debug', 'message' : message})
     logger.debug(message)
     return flags[1]['setup_ready']
 
-# creating an event handler for when getting a message when setup ready
+# creating an event handler - waiting for a message of setup ready
 def setup_ready_event_handler():
-    #print('ctrl: im waiting for setup ready')
     message = 'ctrl: im waiting for setup ready'
-    #queue.put({'level' : 'info', 'message' : message})
     logger.info(message)
-    setup_ready_lisenter = Process(target=rmq_handler.wait_for_message, args=('setup_ready',flags,queue,))
+    setup_ready_lisenter = Process(target=rmq_handler.wait_for_message, args=('setup_ready',flags,))
 
     setup_ready_lisenter.start()
     wait(lambda: is_setup_ready(), timeout_seconds=120, waiting_for="setup to be ready")
-    time.sleep(3)
+    #time.sleep(3)
     setup_ready_lisenter.terminate()
 
 def run_test():
@@ -186,23 +113,28 @@ def run_test():
     return uid
 
 def run_tests(num_of_tests):
-    #print('ctrl: im running the tests one by one')
     message = 'ctrl: im running the tests one by one'
-    #queue.put({'level' : 'info', 'message' : message})
     logger.info(message)
     for index in range(num_of_tests):
         test_uid = run_test()
+        message = 'ctrl: got result - %s' % test_uid
+        logger.info(message)
         rmq_handler.send('', 'results', str(test_uid))
         time.sleep(1)
+    message = 'ctrl: done running tests'
+    logger.info(message)
     
 def all_results_ready():
+    message = 'ctrl: sending all results ready'
+    logger.info(message)
     rmq_handler.send('', 'all_results_ready', '')
-    time.sleep(3)
+    #time.sleep(3)
     link = rmq_handler.request_pdf()
     time.sleep(3)
+    message = 'ctrl: sending pdf ready'
+    logger.info(message)
     rmq_handler.send('', 'pdf_ready', link)
     
-
 def controller_flow():
     make_test_list()
     setup_ready_event_handler()
@@ -210,17 +142,10 @@ def controller_flow():
     run_tests(3)
     time.sleep(3)
     all_results_ready()
-    # the next line ends the process listener
-    #queue.put_nowait(None)
 
 def main():
     flags[1] = {'setup_ready' : False}
-
-    configure_logger_logging()
-    #listener = Process(target=controller_listener_process,
-    #                                   args=(queue, controller_listener_configurer))
-    #listener.start()
-
+    configure_logger_logging(logging_level)
     controller_flow()
 
 

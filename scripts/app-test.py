@@ -2,7 +2,7 @@
 from waiting import wait
 
 # for background waiting function, use multiproccecing
-from multiprocessing import Process, Value, Manager, Queue
+from multiprocessing import Process, Manager
 
 # for using a shared memory variables
 import ctypes
@@ -20,93 +20,54 @@ from json import dumps, loads
 import time
 
 
-logging_file = 'app.log'
-rmq_handler = RabbitmqHandler(logging_file)
+logging_file = None
+logging_level = logging.DEBUG
+rmq_handler = RabbitmqHandler(logging_level)
 mdb_handler = MongodbHandler()
 manager = Manager()
 flags = manager.dict()
-queue = Queue(-1)
 
-# testing logging
+# for logging
 logger = logging.getLogger('app')
 
-def configure_logger_logging():
-    logger.setLevel(logging.INFO)
-    # create file handler that logs debug and higher level messages
-    fh = logging.FileHandler(logging_file)
-    fh.setLevel(logging.DEBUG)
-    # create console handler with a higher log level
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.ERROR)
+def configure_logger_logging(logging_level):
+    logger.setLevel(logging_level)
     # create formatter and add it to the handlers
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
-    fh.setFormatter(formatter)
+    # if there's a logging file
+    if logging_file is not None:
+        # create file handler that logs debug and higher level messages
+        file_handler = logging.FileHandler(logging_file)
+        file_handler.setLevel(logging_level)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        # setting logging level for the console handler
+        logging_level = logging.ERROR
+    # create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging_level)
+    console_handler.setFormatter(formatter)
     # add the handlers to logger
-    logger.addHandler(ch)
-    logger.addHandler(fh)
-
-
-def app_listener_configurer():
-    logging.basicConfig(filename="ctrltest.log", level=logging.DEBUG)
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
-    h = handlers.RotatingFileHandler('apptest.log', 'a', 300, 10)
-    f = logging.Formatter('%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s')
-    h.setFormatter(f)
-    root.addHandler(h)
-
-# This is the listener process top-level loop: wait for logging events
-# (LogRecords)on the queue and handle them, quit when you get a None for a
-# LogRecord.
-def app_listener_process(queue, configurer):
-    configurer()
-    while True:
-        try:
-            record = queue.get()
-            if record is None:  # We send this as a sentinel to tell the listener to quit.
-                break
-            logger = logging.getLogger()
-            if record['level'] is 'debug':
-                logger.debug(record['message'])
-            if record['level'] is 'info':
-                logger.info(record['message'])
-            if record['level'] is 'warning':
-                logger.warning(record['message'])
-            if record['level'] is 'error':
-                logger.error(record['message'])
-            if record['level'] is 'critical':
-                logger.critical(record['message'])
-        except Exception:
-            import sys, traceback
-            print('Whoops! Problem:')
-            traceback.print_exc(file=sys.stderr)
-
+    logger.addHandler(console_handler)
 
 def can_i_start_running():
-    #print('app: tests_list_ready flag - {0}'.format(flags[1]['tests_list_ready']))
-    message = 'app: tests_list_ready flag - {0}'.format(flags[1]['tests_list_ready'])
-    #queue.put({'level' : 'debug', 'message' : message})
+    message = 'app: tests_list_ready flag - %s' % flags[1]['tests_list_ready']
     logger.debug(message)
-    return flags[1]['tests_list_ready'] and flags[1]['device_ids_ready']
+    return (flags[1]['tests_list_ready'] and flags[1]['device_ids_ready'])
 
 def are_all_results_ready():
     return flags[1]['all_results_ready']
 
 def is_pdf_ready():
-    #print('app: pdf_ready flag - {0}'.format(flags[1]['pdf_ready']))
     message = 'app: pdf_ready flag - {0}'.format(flags[1]['pdf_ready'])
-    #queue.put({'level' : 'debug', 'message' : message})
     logger.debug(message)
     return flags[1]['pdf_ready']
 
 def create_setup():
-    #print('app: creating setup...')
     message = 'app: creating setup...'
-    #queue.put({'level' : 'info', 'message' : message})
     logger.info(message)
-    time.sleep(1)
+    #time.sleep(1)
     json_document_setup_example = '''{
 	    "ConfigType": "TestConfig",
 	    "RadioType": "NNN",
@@ -121,55 +82,46 @@ def create_setup():
     }
     '''
     uid = mdb_handler.insert_document('Configuration', loads(json_document_setup_example))
-
-    #print('app: sending set up ready')
     message = 'app: sending set up ready'
-    #queue.put({'level' : 'info', 'message' : message})
     logger.info(message)
     rmq_handler.send('', 'setup_ready', str(uid))   
 
 # creating an event handler for when getting a message when test list ready and got devices
 def before_running_event_handler():
-    #print('app: im waiting for test list and devices ready')
-    message = 'app: im waiting for test list and devices ready'
-    #queue.put({'level' : 'info', 'message' : message})
-    logger.info(message)
-    tests_list_ready_listener = Process(target=rmq_handler.wait_for_message, args=('tests_list', flags, queue))
 
-    # device_ids__ready_listener = Process(target=rmq_handler.wait_for_message, args=('device_ids', flags, queue))
+    message = 'app: im waiting for test list and devices ready'
+    logger.info(message)
+    tests_list_ready_listener = Process(target=rmq_handler.wait_for_message, args=('tests_list', flags,))
+    #device_ids__ready_listener = Process(target=rmq_handler.wait_for_message, args=('device_ids', flags,))
 
     tests_list_ready_listener.start()
-    # device_ids__ready_listener.start()
+    #device_ids__ready_listener.start()
     wait(lambda: can_i_start_running(), timeout_seconds=120, waiting_for="test list and device list to be ready")
-    time.sleep(3)
+    #time.sleep(3)
     tests_list_ready_listener.terminate()
-    # device_ids__ready_listener.terminate()
+    #device_ids__ready_listener.terminate()
 
 def results_event_handler():
-    #print('app: im waiting for results ready')
     message = 'app: im waiting for results ready'
-    #queue.put({'level' : 'info', 'message' : message})
     logger.info(message)
-    results_listener = Process(target=rmq_handler.wait_for_message, args=('results', flags, queue))
-    all_results_ready_listener = Process(target=rmq_handler.wait_for_message, args=('all_results_ready', flags, queue))
+    results_listener = Process(target=rmq_handler.wait_for_message, args=('results', flags,))
+    all_results_ready_listener = Process(target=rmq_handler.wait_for_message, args=('all_results_ready', flags,))
 
     results_listener.start()
     all_results_ready_listener.start()
     wait(lambda: are_all_results_ready(), timeout_seconds=120, waiting_for="all results to be ready")
-    time.sleep(3)
+    #time.sleep(3)
     results_listener.terminate()
     all_results_ready_listener.terminate()
 
 def getting_pdf_event_handler():
-    #print('app: im waiting for pdf ready')
     message = 'app: im waiting for pdf ready'
-    #queue.put({'level' : 'info', 'message' : message})
     logger.info(message)
-    pdf_ready_listener = Process(target=rmq_handler.wait_for_message, args=('pdf_ready', flags, queue))
+    pdf_ready_listener = Process(target=rmq_handler.wait_for_message, args=('pdf_ready', flags,))
 
     pdf_ready_listener.start()
     wait(lambda: is_pdf_ready(), timeout_seconds=120, waiting_for="pdf to be ready")
-    time.sleep(3)
+    #time.sleep(3)
     pdf_ready_listener.terminate()
 
 
@@ -179,15 +131,10 @@ def app_flow():
     results_event_handler()
     getting_pdf_event_handler()
     print('app: controller thanks for everything, you may need to think of another name though')
-    # the next line ends the process listener
-    #queue.put_nowait(None)
 
 if __name__ == '__main__':
     flags[1] = {'tests_list_ready' : False, 'device_ids_ready' : True, 'all_results_ready' : False, 'pdf_ready' : False}
 
-    configure_logger_logging()
-    #listener = Process(target=app_listener_process,
-    #                                   args=(queue, app_listener_configurer))
-    #listener.start()
+    configure_logger_logging(logging_level)
 
     app_flow()
