@@ -23,6 +23,9 @@ from multiprocessing import Process, Manager
 # for delay use
 import time
 
+# for environment variables
+import os
+
 ##################################
 #              Code              #
 ##################################
@@ -33,6 +36,7 @@ rmq_handler = RabbitmqHandler(logging_level)
 mdb_handler = MongodbHandler()
 manager = Manager()
 flags = manager.dict()
+time_delay = int(os.getenv('TIME_DELAY'))
 
 # for logging
 logger = logging.getLogger('ctrl')
@@ -62,7 +66,7 @@ def configure_logger_logging(logging_level):
 def make_test_list():
     message = 'ctrl: test list in proggress...'
     logger.info(message)
-    #time.sleep(1)
+    time.sleep(time_delay)
     json_document_test_suits_example = '''{
 	"ConfigType": "AvailableTestSuites",
 	"TestSuites": [
@@ -100,7 +104,6 @@ def setup_ready_event_handler():
 
     setup_ready_lisenter.start()
     wait(lambda: is_setup_ready(), timeout_seconds=120, waiting_for="setup to be ready")
-    #time.sleep(3)
     setup_ready_lisenter.terminate()
 
 def run_test():
@@ -120,7 +123,7 @@ def run_tests(num_of_tests):
         message = 'ctrl: got result - %s' % test_uid
         logger.info(message)
         rmq_handler.send('', 'results', str(test_uid))
-        time.sleep(1)
+        time.sleep(time_delay / 2)
     message = 'ctrl: done running tests'
     logger.info(message)
     
@@ -128,9 +131,8 @@ def all_results_ready():
     message = 'ctrl: sending all results ready'
     logger.info(message)
     rmq_handler.send('', 'all_results_ready', '')
-    #time.sleep(3)
     link = rmq_handler.request_pdf()
-    time.sleep(3)
+    time.sleep(time_delay)
     message = 'ctrl: sending pdf ready'
     logger.info(message)
     rmq_handler.send('', 'pdf_ready', link)
@@ -138,9 +140,9 @@ def all_results_ready():
 def controller_flow():
     make_test_list()
     setup_ready_event_handler()
-    time.sleep(1)
+    time.sleep(time_delay)
     run_tests(3)
-    time.sleep(3)
+    time.sleep(time_delay)
     all_results_ready()
 
 def main():
