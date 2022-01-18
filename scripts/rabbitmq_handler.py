@@ -66,23 +66,33 @@ class RabbitmqHandler:
 
     
     def on_response_pdf(self, ch, method, props, body):
-        if self.corr_id == props.correlation_id:
+        # check if the correlation id is the same as sent. in addition, checking if the body is not empty ('')
+        if self.corr_id == props.correlation_id and body is not '':
             self.response = body
 
     # send rpc message in order to collect a 'pdf ready' notification from the report generator
-    def request_pdf(self):
+    def request_pdf(self, flags):
         self.response = None
         self.corr_id = str(uuid.uuid4())
-        self.channel.basic_publish(
+        while self.response is None:
+            self.channel.basic_publish(
             exchange='',
             routing_key='pdfs',
             properties=pika.BasicProperties(
                 reply_to=self.callback_queue_pdfs,
                 correlation_id=self.corr_id),
             body='')
-        while self.response is None:
             self.connection.process_data_events()
-        return self.response
+            
+            
+        temp_list = flags[1]
+        temp_list['pdfs_ready'] = True
+        flags[1] = temp_list
+
+        temp_list = flags[1]
+        temp_list['pdf_link'] = self.response
+        flags[1] = temp_list
+        #return self.response
 
     def send(self, msg_exchange, msg_routing_key, msg_body):
         self.channel.basic_publish(
