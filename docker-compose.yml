@@ -1,0 +1,114 @@
+version: "3.8"
+
+services:
+        controller:
+                #image: test-changes-dlep:1.7
+                build:
+                    context: .
+                    dockerfile: ./ctrl-Dockerfile
+                tty: true
+                stdin_open: true
+                depends_on:
+                    - rabbitmq
+                networks:
+                    - net1
+                environment:
+                    - RMQ_HOST=rabbitmq
+                    - QUEUE_NAMES=tests_list,setup_ready,results,all_results_ready,pdfs,pdf_ready
+                    - MONGO_INITDB_ROOT_USERNAME=root
+                    - MONGO_INITDB_ROOT_PASSWORD=example
+                    - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
+                    - DB_NAME=rri
+                    - TIME_DELAY=2
+                    - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
+                #volumes:
+                #    - /home/user2/work/idf/controller/scripts:/controller-scripts    
+
+        report-generator:
+                #image: test-changes-dlep:1.7
+                build:
+                    context: .
+                    dockerfile: ./report-generator-Dockerfile
+                tty: true
+                stdin_open: true
+                depends_on:
+                    - rabbitmq
+                networks:
+                    - net1
+                environment:
+                    - RMQ_HOST=rabbitmq
+                    - QUEUE_NAMES=pdfs
+                    - MONGO_INITDB_ROOT_USERNAME=root
+                    - MONGO_INITDB_ROOT_PASSWORD=example
+                    - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
+                    - DB_NAME=rri
+                    - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
+                #volumes:
+                #    - /home/user2/work/idf/controller/scripts:/controller-scripts    
+
+        app:
+                #image: test-changes-dlep:1.7
+                build:
+                    context: .
+                    dockerfile: ./app-Dockerfile
+                tty: true
+                stdin_open: true
+                depends_on:
+                    - rabbitmq
+                networks:
+                    - net1
+                environment:
+                    - RMQ_HOST=rabbitmq
+                    - QUEUE_NAMES=tests_list,device_ids,setup_ready,results,all_results_ready,pdf_ready
+                    - MONGO_INITDB_ROOT_USERNAME=root
+                    - MONGO_INITDB_ROOT_PASSWORD=example
+                    - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
+                    - DB_NAME=rri
+                    - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
+                #volumes:
+                #    - /home/user2/work/idf/controller/scripts:/controller-scripts    
+        
+        rabbitmq:
+                image: rabbitmq:3.9.8-management-alpine
+                container_name: rabbitmq
+                networks:
+                    - net1
+                ports: 
+                    - "15672:15672"
+                    - "5672:5672"
+                healthcheck:
+                    test: ["CMD", "curl", "-f", "http://localhost:15672"]
+                    interval: 30s
+                    timeout: 10s
+                    retries: 5
+
+        mongodb:
+                image: mongo
+                container_name: mongodb
+                networks:
+                    - net1
+                ports: 
+                    - "27017:27017"
+                restart: always
+                environment:
+                    - MONGO_INITDB_ROOT_USERNAME=root
+                    - MONGO_INITDB_ROOT_PASSWORD=example
+
+        mongo-express:
+                image: mongo-express
+                container_name: mongo-express
+                networks:
+                    - net1
+                ports: 
+                    - "8081:8081"
+                restart: always
+                environment:
+                    - ME_CONFIG_MONGODB_ADMINUSERNAME=root
+                    - ME_CONFIG_MONGODB_ADMINPASSWORD=example
+                    - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
+
+
+networks:
+    net1:
+        name: net1
+        driver: bridge
