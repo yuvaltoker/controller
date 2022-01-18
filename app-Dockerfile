@@ -37,11 +37,11 @@ RUN chmod +x /wait
 RUN mkdir /app-scripts
 
 ## Add your application to the docker image (comment out in case of working with volume)
-#ADD ./scripts/app.py /app-scripts
-#ADD ./scripts/rabbitmq_handler.py /app-scripts
-#ADD ./scripts/mongodb_handler.py /app-scripts
-#RUN chmod +x /app-scripts/app.py
+ADD ./scripts/app.py /app-scripts
+ADD ./scripts/rabbitmq_handler.py /app-scripts
+ADD ./scripts/mongodb_handler.py /app-scripts
+RUN chmod +x /app-scripts/app.py
 
 
 ## Launch the wait tool and then your application
-#CMD /wait && python /app-scripts/app.py
+CMD /wait && python /app-scripts/app.py
