@@ -37,11 +37,11 @@ RUN chmod +x /wait
 RUN mkdir /report-generator-scripts
 
 ## Add your application to the docker image (comment out in case of working with volume)
-ADD ./scripts/report-generator.py /report-generator-scripts
-ADD ./scripts/rabbitmq_handler.py /report-generator-scripts
-ADD ./scripts/mongodb_handler.py /report-generator-scripts
-RUN chmod +x /report-generator-scripts/report-generator.py
-
-
+#ADD ./scripts/report-generator.py /report-generator-scripts
+#ADD ./scripts/rabbitmq_handler.py /report-generator-scripts
+#ADD ./scripts/mongodb_handler.py /report-generator-scripts
+#RUN chmod +x /report-generator-scripts/report-generator.py
+#
+#
 ## Launch the wait tool and then your application
-CMD /wait && python /report-generator-scripts/report-generator.py
+#CMD /wait && python /report-generator-scripts/report-generator.py

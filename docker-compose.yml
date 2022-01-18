@@ -21,8 +21,8 @@ services:
                     - DB_NAME=rri
                     - TIME_DELAY=2
                     - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
-                #volumes:
-                #    - /home/user2/work/idf/controller/scripts:/controller-scripts    
+                volumes:
+                    - /home/user2/work/idf/controller/scripts:/controller-scripts    
 
         report-generator:
                 #image: test-changes-dlep:1.7
@@ -43,8 +43,8 @@ services:
                     - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
                     - DB_NAME=rri
                     - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
-                #volumes:
-                #    - /home/user2/work/idf/controller/scripts:/controller-scripts    
+                volumes:
+                    - /home/user2/work/idf/controller/scripts:/report-generator-scripts    
 
         app:
                 #image: test-changes-dlep:1.7
@@ -65,8 +65,8 @@ services:
                     - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
                     - DB_NAME=rri
                     - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
-                #volumes:
-                #    - /home/user2/work/idf/controller/scripts:/controller-scripts    
+                volumes:
+                    - /home/user2/work/idf/controller/scripts:/app-scripts    
         
         rabbitmq:
                 image: rabbitmq:3.9.8-management-alpine

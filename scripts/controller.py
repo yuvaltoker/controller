@@ -103,7 +103,7 @@ def setup_ready_event_handler():
     setup_ready_lisenter = Process(target=rmq_handler.wait_for_message, args=('setup_ready',flags,))
 
     setup_ready_lisenter.start()
-    wait(lambda: is_setup_ready(), timeout_seconds=120, waiting_for="setup to be ready")
+    wait(lambda: is_setup_ready(), waiting_for="setup to be ready")
     setup_ready_lisenter.terminate()
 
 def run_test():
@@ -126,7 +126,7 @@ def run_tests(num_of_tests):
         time.sleep(time_delay / 2)
     message = 'ctrl: done running tests'
     logger.info(message)
-    
+
 def all_results_ready():
     message = 'ctrl: sending all results ready'
     logger.info(message)
