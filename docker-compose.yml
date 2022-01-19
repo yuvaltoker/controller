@@ -2,12 +2,12 @@ version: "3.8"
 
 services:
         controller:
-                image: controller_controller
-                #build:
-                #    context: .
-                #    dockerfile: ./ctrl-Dockerfile
-                #tty: true
-                #stdin_open: true
+                #image: controller_controller
+                build:
+                    context: .
+                    dockerfile: ./ctrl-Dockerfile
+                tty: true
+                stdin_open: true
                 #depends_on:
                 #    - rabbitmq
                 networks:
@@ -21,8 +21,9 @@ services:
                     - DB_NAME=rri
                     - TIME_DELAY=2
                     - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
-                #volumes:
-                #    - /home/user2/work/idf/controller/scripts:/controller-scripts    
+                volumes:
+                    - /home/user2/work/idf/controller/scripts:/controller-scripts
+                    - /home/user2/work/idf/controller/tests:/tests 
         app:
                 hostname: app
                 image: samyon196/rri-app-stub:0.0.1
