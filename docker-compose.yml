@@ -6,10 +6,10 @@ services:
                 #build:
                 #    context: .
                 #    dockerfile: ./ctrl-Dockerfile
-                tty: true
-                stdin_open: true
-                depends_on:
-                    - rabbitmq
+                #tty: true
+                #stdin_open: true
+                #depends_on:
+                #    - rabbitmq
                 networks:
                     - net1
                 environment:
