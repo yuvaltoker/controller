@@ -96,6 +96,11 @@ def is_setup_ready():
     logger.debug(message)
     return flags[1]['setup_ready']
 
+def is_pdfs_ready():
+    message = 'ctrl: pdfs flag - {0}'.format(flags[1]['pdfs_ready'])
+    logger.debug(message)
+    return flags[1]['pdfs_ready']
+
 # creating an event handler - waiting for a message of setup ready
 def setup_ready_event_handler():
     message = 'ctrl: im waiting for setup ready'
@@ -103,8 +108,20 @@ def setup_ready_event_handler():
     setup_ready_lisenter = Process(target=rmq_handler.wait_for_message, args=('setup_ready',flags,))
 
     setup_ready_lisenter.start()
-    wait(lambda: is_setup_ready(), timeout_seconds=120, waiting_for="setup to be ready")
+    wait(lambda: is_setup_ready(), waiting_for="setup to be ready")
     setup_ready_lisenter.terminate()
+
+def pdfs_ready_event_handler():
+    message = 'ctrl: im waiting for pdfs ready'
+    logger.info(message)
+    pdfs_ready_lisenter = Process(target=rmq_handler.request_pdf, args=(flags,))
+
+    pdfs_ready_lisenter.start()
+    wait(lambda: is_pdfs_ready(), waiting_for="pdfs to be ready")
+    pdfs_ready_lisenter.terminate()
+    message = 'ctrl: got callback from report-generator'
+    logger.info(message)
+    return flags[1]['pdf_link']
 
 def run_test():
     json_document_result_example = '''{
@@ -126,12 +143,13 @@ def run_tests(num_of_tests):
         time.sleep(time_delay / 2)
     message = 'ctrl: done running tests'
     logger.info(message)
-    
+
 def all_results_ready():
     message = 'ctrl: sending all results ready'
     logger.info(message)
     rmq_handler.send('', 'all_results_ready', '')
-    link = rmq_handler.request_pdf()
+    link = pdfs_ready_event_handler()
+    logger.info(link)
     time.sleep(time_delay)
     message = 'ctrl: sending pdf ready'
     logger.info(message)
@@ -146,7 +164,7 @@ def controller_flow():
     all_results_ready()
 
 def main():
-    flags[1] = {'setup_ready' : False}
+    flags[1] = {'setup_ready' : False, 'pdfs_ready' : False, 'pdf_link' : ''}
     configure_logger_logging(logging_level)
     controller_flow()
 

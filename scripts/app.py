@@ -96,7 +96,7 @@ def before_running_event_handler():
 
     tests_list_ready_listener.start()
     #device_ids__ready_listener.start()
-    wait(lambda: can_i_start_running(), timeout_seconds=120, waiting_for="test list and device list to be ready")
+    wait(lambda: can_i_start_running(), waiting_for="test list and device list to be ready")
     #time.sleep(3)
     tests_list_ready_listener.terminate()
     #device_ids__ready_listener.terminate()
@@ -109,7 +109,7 @@ def results_event_handler():
 
     results_listener.start()
     all_results_ready_listener.start()
-    wait(lambda: are_all_results_ready(), timeout_seconds=120, waiting_for="all results to be ready")
+    wait(lambda: are_all_results_ready(), waiting_for="all results to be ready")
     #time.sleep(3)
     results_listener.terminate()
     all_results_ready_listener.terminate()
@@ -120,7 +120,7 @@ def getting_pdf_event_handler():
     pdf_ready_listener = Process(target=rmq_handler.wait_for_message, args=('pdf_ready', flags,))
 
     pdf_ready_listener.start()
-    wait(lambda: is_pdf_ready(), timeout_seconds=120, waiting_for="pdf to be ready")
+    wait(lambda: is_pdf_ready(), waiting_for="pdf to be ready")
     #time.sleep(3)
     pdf_ready_listener.terminate()
 

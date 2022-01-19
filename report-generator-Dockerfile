@@ -43,5 +43,5 @@ ADD ./scripts/mongodb_handler.py /report-generator-scripts
 RUN chmod +x /report-generator-scripts/report-generator.py
 
 
-## Launch the wait tool and then your application
+# Launch the wait tool and then your application
 CMD /wait && python /report-generator-scripts/report-generator.py

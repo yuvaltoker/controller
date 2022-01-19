@@ -2,14 +2,14 @@ version: "3.8"
 
 services:
         controller:
-                #image: test-changes-dlep:1.7
-                build:
-                    context: .
-                    dockerfile: ./ctrl-Dockerfile
-                tty: true
-                stdin_open: true
-                depends_on:
-                    - rabbitmq
+                image: controller_controller
+                #build:
+                #    context: .
+                #    dockerfile: ./ctrl-Dockerfile
+                #tty: true
+                #stdin_open: true
+                #depends_on:
+                #    - rabbitmq
                 networks:
                     - net1
                 environment:
@@ -23,6 +23,26 @@ services:
                     - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
                 #volumes:
                 #    - /home/user2/work/idf/controller/scripts:/controller-scripts    
+        app:
+                hostname: app
+                image: samyon196/rri-app-stub:0.0.1
+                networks: 
+                  - net1
+                environment:
+                  DB_URL: mongodb://root:example@mongodb:27017
+                  MQ_URL: amqp://rabbitmq:5672
+                  WAIT_HOSTS: rabbitmq:5672, mongodb:27017
+
+        dlep:
+                hostname: dlep
+                image: samyon196/rri-dlep-stub:0.0.1
+                networks: 
+                  - net1
+                environment:
+                  DB_URL: mongodb://root:example@mongodb:27017
+                  MQ_URL: amqp://rabbitmq:5672
+                  WAIT_TIME_MS: 1003
+                  WAIT_HOSTS: rabbitmq:5672, mongodb:27017
 
         report-generator:
                 #image: test-changes-dlep:1.7
@@ -44,29 +64,29 @@ services:
                     - DB_NAME=rri
                     - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
                 #volumes:
-                #    - /home/user2/work/idf/controller/scripts:/controller-scripts    
+                #    - /home/user2/work/idf/controller/scripts:/report-generator-scripts    
 
-        app:
-                #image: test-changes-dlep:1.7
-                build:
-                    context: .
-                    dockerfile: ./app-Dockerfile
-                tty: true
-                stdin_open: true
-                depends_on:
-                    - rabbitmq
-                networks:
-                    - net1
-                environment:
-                    - RMQ_HOST=rabbitmq
-                    - QUEUE_NAMES=tests_list,device_ids,setup_ready,results,all_results_ready,pdf_ready
-                    - MONGO_INITDB_ROOT_USERNAME=root
-                    - MONGO_INITDB_ROOT_PASSWORD=example
-                    - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
-                    - DB_NAME=rri
-                    - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
-                #volumes:
-                #    - /home/user2/work/idf/controller/scripts:/controller-scripts    
+        #app:
+        #        #image: test-changes-dlep:1.7
+        #        build:
+        #            context: .
+        #            dockerfile: ./app-Dockerfile
+        #        tty: true
+        #        stdin_open: true
+        #        depends_on:
+        #            - rabbitmq
+        #        networks:
+        #            - net1
+        #        environment:
+        #            - RMQ_HOST=rabbitmq
+        #            - QUEUE_NAMES=tests_list,device_ids,setup_ready,results,all_results_ready,pdf_ready
+        #            - MONGO_INITDB_ROOT_USERNAME=root
+        #            - MONGO_INITDB_ROOT_PASSWORD=example
+        #            - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
+        #            - DB_NAME=rri
+        #            - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
+        #        #volumes:
+        #        #    - /home/user2/work/idf/controller/scripts:/app-scripts    
         
         rabbitmq:
                 image: rabbitmq:3.9.8-management-alpine
