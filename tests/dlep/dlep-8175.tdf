@@ -1,0 +1,2 @@
+NAME: A very simple dlep test
+TEST: (DLEP) EXPECT SIGNAL "Peer_Offer" TO_INCLUDE DATA_ITEM "Peer_Type"

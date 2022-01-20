@@ -1,46 +1,54 @@
-import pika
-import uuid
-import os
+import glob
+import json
 
-class FibonacciRpcClient(object):
+def get_files_to_list(path):
+    all_files = []
+    for file in glob.glob(path):
+        all_files.append(file)
+    return all_files
 
-    def __init__(self):
-        my_host = os.getenv('RMQ_HOST')
-        self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=my_host))
+def main():
+    path_of_tests = '/tests/snmp/*'
+    files_list = []
+    files_list = files_list + get_files_to_list(path_of_tests)
+    if '/tests/dlep' in files_list:
+        files_list.remove('/tests/dlep')
+    print(files_list)
 
-        self.channel = self.connection.channel()
+# suppose to take all /tests/**/.tdf
+def folder_read_to_json(path):
+    available_test_suites = {'ConfigType' : 'AvailableTestSuites', 'TestSuites' : []}
+    folders_list = get_files_to_list(path)
+    test_suites = {}
+    for folder in folders_list:
+        folder_name = str(folder[7:])
+        test_suites[folder_name] = get_files_to_list(folder+'/*')
 
-        result = self.channel.queue_declare(queue='', exclusive=True)
-        self.callback_queue = result.method.queue
+    print(test_suites)
 
-        self.channel.basic_consume(
-            queue=self.callback_queue,
-            on_message_callback=self.on_response,
-            auto_ack=True)
+    
 
-    def on_response(self, ch, method, props, body):
-        if self.corr_id == props.correlation_id:
-            self.response = body
+if __name__ == "__main__":
+    folder_read_to_json('/tests/*')
 
-    def call(self, n):
-        self.response = None
-        self.corr_id = str(uuid.uuid4())
-        self.channel.basic_publish(
-            exchange='',
-            routing_key='rpc_queue',
-            properties=pika.BasicProperties(
-                reply_to=self.callback_queue,
-                correlation_id=self.corr_id,
-            ),
-            body=str(n))
-        while self.response is None:
-            self.connection.process_data_events()
-        return int(self.response)
+    '''{
+	"_id": <random>,
+	"ConfigType": "AvailableTestSuites",
+	"TestSuites": [
+		{
+			"Name": "dlep",
+			"Tests": [
+				"dlep/dlep-8175.tdf",
+				"dlep/dlep-8703.tdf",
+			],
+		},
+		{
+			"Name": "snmp",
+			"Tests": [
+				"snmp/battery-MIB.tdf",
+				"snmp/network-MIB.tdf",
+			]
+		}
+	]
+}'''
 
-
-fibonacci_rpc = FibonacciRpcClient()
-
-print(" [x] Requesting fib(30)")
-response = fibonacci_rpc.call(30)
-print(" [.] Got %r" % response)
