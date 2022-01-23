@@ -1,15 +1,13 @@
 import glob
 import json
 
+from test_parser import TestsParser
+
 def get_files_to_list(path):
     all_files = []
     for file in glob.glob(path):
         all_files.append(file)
     return all_files
-
-def main():
-    json_available_test_suites = folder_read_to_json('/tests/*')
-    print(json_available_test_suites)
 
 # takes all /tests/**/.tdf
 def folder_read_to_json(path):
@@ -27,7 +25,16 @@ def folder_read_to_json(path):
     available_test_suites['TestSuites'] = test_suites
     return json.dumps(available_test_suites)
 
-    
+def parse_file(file):
+    test_parser = TestsParser(file)
+    print(test_parser.file_to_lines())
+
+def main():
+    json_available_test_suites = folder_read_to_json('/tests/*')
+    print(json_available_test_suites)
+    parse_file('/tests/dlep/dlep-8175.tdf')
+
+
 
 if __name__ == "__main__":
     main()
