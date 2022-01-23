@@ -19,17 +19,27 @@ def main():
 def folder_read_to_json(path):
     available_test_suites = {'ConfigType' : 'AvailableTestSuites', 'TestSuites' : []}
     folders_list = get_files_to_list(path)
-    test_suites = {}
-    for folder in folders_list:
+    test_suites = []
+    for index, folder in enumerate(folders_list):
+        test_suite = {}
         folder_name = str(folder[7:])
-        test_suites[folder_name] = get_files_to_list(folder+'/*')
+        test_suite.update({'Name' : folder_name})
+        test_suite.update({'Tests' : get_files_to_list(folder+'/*')})
+        #test_suite['Tests'] = get_files_to_list(folder+'/*')
+        #test_suite['Name'] = folder_name
+        # add test suite to test suites
+        test_suites.insert(index, test_suite)
+
 
     print(test_suites)
+    available_test_suites['TestSuites'] = test_suites
+    return json.dumps(available_test_suites)
 
     
 
 if __name__ == "__main__":
-    folder_read_to_json('/tests/*')
+    json_available_test_suites = folder_read_to_json('/tests/*')
+    print(json_available_test_suites)
 
     '''{
 	"_id": <random>,
