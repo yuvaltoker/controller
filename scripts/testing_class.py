@@ -8,14 +8,10 @@ def get_files_to_list(path):
     return all_files
 
 def main():
-    path_of_tests = '/tests/snmp/*'
-    files_list = []
-    files_list = files_list + get_files_to_list(path_of_tests)
-    if '/tests/dlep' in files_list:
-        files_list.remove('/tests/dlep')
-    print(files_list)
+    json_available_test_suites = folder_read_to_json('/tests/*')
+    print(json_available_test_suites)
 
-# suppose to take all /tests/**/.tdf
+# takes all /tests/**/.tdf
 def folder_read_to_json(path):
     available_test_suites = {'ConfigType' : 'AvailableTestSuites', 'TestSuites' : []}
     folders_list = get_files_to_list(path)
@@ -23,23 +19,18 @@ def folder_read_to_json(path):
     for index, folder in enumerate(folders_list):
         test_suite = {}
         folder_name = str(folder[7:])
-        test_suite.update({'Name' : folder_name})
-        test_suite.update({'Tests' : get_files_to_list(folder+'/*')})
-        #test_suite['Tests'] = get_files_to_list(folder+'/*')
-        #test_suite['Name'] = folder_name
+        test_suite['Name'] = folder_name
+        test_suite['Tests'] = get_files_to_list(folder+'/*.tdf')
         # add test suite to test suites
         test_suites.insert(index, test_suite)
 
-
-    print(test_suites)
     available_test_suites['TestSuites'] = test_suites
     return json.dumps(available_test_suites)
 
     
 
 if __name__ == "__main__":
-    json_available_test_suites = folder_read_to_json('/tests/*')
-    print(json_available_test_suites)
+    main()
 
     '''{
 	"_id": <random>,
