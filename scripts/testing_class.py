@@ -38,11 +38,6 @@ def main():
     #json_available_test_suites = folder_read_to_json('/tests/*')
     #print(json_available_test_suites)
     parse_file('/tests/dlep/dlep-8175.tdf')
-    #my_dict = {'hey' : 'hello'}
-    #my_str = 'hey one two'
-    #my_list = my_str.split(' ')
-    #if my_list[0] in my_dict:
-    #    print('yo im here')
 
 
 

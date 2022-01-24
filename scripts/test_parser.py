@@ -65,7 +65,7 @@ class TestsParser:
                 while len(word_list):
                     # this function can raise an exception
                     self.logger.debug(word_list)
-                    word_list = self.cut_and_parse_into_basic_variables(test_file, word_list)
+                    self.cut_and_parse_into_basic_variables(test_file, word_list)
         except CannotBeParsedError as e:
             self.logger.warning('file {} cannot be parsed. error message -> {}'.format(file, e.__str__))
 
@@ -73,8 +73,10 @@ class TestsParser:
     def cut_and_parse_into_basic_variables(self, test_file, word_list):
         if word_list[0] in self.dict_of_basic_commands:
             self.logger.debug('inside cut_and_parse')
-            # the first word's cutting happens here, word_list[1:], because the functions returns the list
-            word_list = self.dict_of_basic_commands[word_list[0]](test_file, word_list[1:])
+            function_to_call = word_list[0]
+            word_list[:] = word_list[1:]
+            # the first word's cutting happens here, word_list[1:]
+            self.dict_of_basic_commands[function_to_call](test_file, word_list)
             return word_list
         else:
             raise CannotBeParsedError('cannot find a command for -> {}'.format(word_list[0]))
@@ -83,26 +85,21 @@ class TestsParser:
     def set_test_name(self, test_file, word_list):
         self.logger.debug('im in set_test_name')
         # returns empty list, cause the whole name has been read
-        return {}
+        word_list[:] = []
 
     def start_reading_test(self, test_file, word_list):
         self.logger.debug('im in start_reading_test')
-        return word_list
 
     def create_dlep_test(self, test_file, word_list):
         self.logger.debug('im in create_dlep_test')
-        return word_list
 
     def create_dlep_test(self, test_file, word_list):
         self.logger.debug('im in create_dlep_test')
-        return word_list
 
     def create_snmp_test(self, test_file, word_list):
         self.logger.debug('im in create_snmp_test')
-        return word_list
 
     def expect_something(self, test_file, word_list):
         self.logger.debug('im in expect_something')
-        return word_list
 
 
