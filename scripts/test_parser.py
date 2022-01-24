@@ -73,7 +73,7 @@ class TestsParser:
     def cut_and_parse_into_basic_variables(self, test_file, word_list):
         if word_list[0] in self.dict_of_basic_commands:
             self.logger.debug('inside cut_and_parse')
-            # the first word's cutting happens here, word_list[1:], because the functions returns the list as given
+            # the first word's cutting happens here, word_list[1:], because the functions returns the list
             word_list = self.dict_of_basic_commands[word_list[0]](test_file, word_list[1:])
             return word_list
         else:
