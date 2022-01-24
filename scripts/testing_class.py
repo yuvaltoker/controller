@@ -1,7 +1,11 @@
 import glob
 import json
+import logging
 
 from test_parser import TestsParser
+
+logging_file = None
+logging_level = logging.DEBUG
 
 def get_files_to_list(path):
     all_files = []
@@ -26,13 +30,19 @@ def folder_read_to_json(path):
     return json.dumps(available_test_suites)
 
 def parse_file(file):
-    test_parser = TestsParser(file)
-    print(test_parser.file_to_lines())
+    test_parser = TestsParser(logging_level)
+    test_parser.parse_file(file)
+    
 
 def main():
-    json_available_test_suites = folder_read_to_json('/tests/*')
-    print(json_available_test_suites)
+    #json_available_test_suites = folder_read_to_json('/tests/*')
+    #print(json_available_test_suites)
     parse_file('/tests/dlep/dlep-8175.tdf')
+    #my_dict = {'hey' : 'hello'}
+    #my_str = 'hey one two'
+    #my_list = my_str.split(' ')
+    #if my_list[0] in my_dict:
+    #    print('yo im here')
 
 
 
