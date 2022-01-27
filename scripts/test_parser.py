@@ -41,8 +41,8 @@ class TestsParser:
                                     'EXPECT' : self.expect_something}
         self.dict_of_test_type = {'(DLEP)' : self.create_dlep_test, \
                                 '(SNMP)' : self.create_snmp_test}
-        self.dict_of_dlep_commands = {'SIGNAL', 'TO_INCLUDE', 'DATA_ITEM'}
-        self.dict_of_snmp_commands = {'OID', 'TO_BE', 'SETTABLE', 'OF_TYPE', 'INTEGER', 'STRING', 'READONLY', 'WITH_VALUE'}
+        self.dict_of_dlep_commands = {'EXPECT' : self.expect_something, 'SIGNAL' : self.set_signal, 'TO_INCLUDE', 'DATA_ITEM'}
+        self.dict_of_snmp_commands = {'EXPECT' : self.expect_something, 'OID', 'TO_BE', 'SETTABLE', 'OF_TYPE', 'INTEGER', 'STRING', 'READONLY', 'WITH_VALUE'}
         self.current_dict_of_commands = self.dict_of_basic_commands
         self.tests = []
         self.test_files = []
@@ -88,6 +88,9 @@ class TestsParser:
             raise CannotBeParsedError('cannot find a command for -> {}'.format(' '.join(word_list[0])))
             
 
+    #############################
+    # basic commands' functions #
+    #############################
     def set_test_name(self, test_file, word_list):
         if not test_file.is_name_set:
             test_file.set_name(' '.join(word_list))
@@ -104,13 +107,23 @@ class TestsParser:
 
     def create_dlep_test(self, test_file, word_list):
         test_file.create_dlep_test(word_list)
+        self.current_dict_of_commands = self.dict_of_dlep_commands
 
     def create_snmp_test(self, test_file, word_list):
         test_file.create_snmp_test(word_list)
+        self.current_dict_of_commands = self.dict_of_snmp_commands
         
-
     def expect_something(self, test_file, word_list):
-        self.logger.debug('im in expect_something')
+        # the cutting was earlier, so have nothing to do
+        pass
 
+    ############################
+    # dlep commands' functions #
+    ############################
+
+
+    ############################
+    # snmp commands' functions #
+    ############################
 
 
