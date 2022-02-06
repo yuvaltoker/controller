@@ -1,4 +1,5 @@
 
+from cgi import test
 from tests import TestFile
 import logging
 
@@ -36,14 +37,15 @@ def configure_logger_logging(logger, logging_level, logging_file):
 class TestsParser:
     def __init__(self, logging_level, logging_file = None):
         # self.list_of_basic_commands includes the key words/signs which later help cutting the test into small pieces 
-        self.dict_of_basic_commands = {'NAME:' : self.set_test_name, \
-                                    'TEST:' : self.start_reading_test, \
-                                    'EXPECT' : self.expect_something}
-        self.dict_of_test_type = {'(DLEP)' : self.create_dlep_test, \
-                                '(SNMP)' : self.create_snmp_test}
-        self.dict_of_dlep_commands = {'EXPECT' : self.expect_something, 'SIGNAL' : self.set_signal, 'TO_INCLUDE', 'DATA_ITEM'}
-        self.dict_of_snmp_commands = {'EXPECT' : self.expect_something, 'OID', 'TO_BE', 'SETTABLE', 'OF_TYPE', 'INTEGER', 'STRING', 'READONLY', 'WITH_VALUE'}
+        self.dict_of_basic_commands = {'TYPE' : self.set_test_type, \
+                                    'NAME:' : self.set_test_name, \
+                                    'TEST:' : self.start_reading_test}
+        self.dict_of_test_type = {'DLEP' : self.create_dlep_test, \
+                                'SNMP' : self.create_snmp_test}
+        self.dict_of_dlep_commands = {'SIGNAL' : self.set_signal, 'TO_INCLUDE' : self.set_to_include, 'TO_NOT_INCLUDE' : self.set_to_not_include}
+        self.dict_of_snmp_commands = {'OID' : self.set_oid, 'TO_BE' : self.set_to_be, 'OF_TYPE' : self.set_mib_type, 'WITH_VALUE' : self.set_mib_value}
         self.current_dict_of_commands = self.dict_of_basic_commands
+        self.current_test_type = ''
         self.tests = []
         self.test_files = []
         # logging
@@ -72,6 +74,9 @@ class TestsParser:
                     # this function can raise an exception
                     self.logger.debug(word_list)
                     self.cut_and_parse_into_variables(test_file, word_list)
+                if test_file.check_if_current_test_ready():
+                    # add the current test into list of tests
+                    test_file.add_test()
             self.test_files.append(test_file)
         except CannotBeParsedError as e:
             self.logger.warning('file {} cannot be parsed. error message -> {}'.format(file, e.__str__))
@@ -79,51 +84,109 @@ class TestsParser:
     
     def cut_and_parse_into_variables(self, test_file, word_list):
         if word_list[0] in self.current_dict_of_commands:
-            function_to_call = word_list[0]
-            # the first word's cutting happens here, word_list[1:]
-            word_list[:] = word_list[1:]
-            # call to function by the given key-word 
-            self.current_dict_of_commands[function_to_call](test_file, word_list)
+            self.call_fuction_by_list(test_file, word_list)
+        elif word_list[0] == 'TYPE:':
+            # in case we started a new test
+            self.current_dict_of_commands = self.dict_of_basic_commands
+            self.call_fuction_by_list(test_file, word_list)
         else:
             raise CannotBeParsedError('cannot find a command for -> {}'.format(' '.join(word_list[0])))
+
+    def call_fuction_by_list(self, test_file, word_list):
+        function_to_call = word_list[0]
+        # the first word's cutting happens here, word_list[1:]
+        word_list[:] = word_list[1:]
+        # call to function by the given key-word 
+        self.current_dict_of_commands[function_to_call](test_file, word_list)
             
 
     #############################
     # basic commands' functions #
     #############################
-    def set_test_name(self, test_file, word_list):
-        if not test_file.is_name_set:
-            test_file.set_name(' '.join(word_list))
-        else:
-            raise CannotBeParsedError('another name is given for test file {}'.format(' '.join(word_list[1:])))
-        # returns empty list, cause the whole name has been read
-        word_list[:] = []
-
-    def start_reading_test(self, test_file, word_list):
+    
+    # after calling 'TYPE:'
+    def set_test_type(self, test_file, word_list):
         # redirect the list of commands to read from dictionary of test type
         self.current_dict_of_commands = self.dict_of_test_type
         # there is not another cutting here, the next time cut_and_parse_into_variables will be called
         # it will call to the right function from the self.dict_of_test_type
 
+    # create dlep test as type says 'DLEP'
     def create_dlep_test(self, test_file, word_list):
         test_file.create_dlep_test(word_list)
-        self.current_dict_of_commands = self.dict_of_dlep_commands
+        self.current_dict_of_commands = self.dict_of_basic_commands
+        self.current_test_type = 'DLEP'
 
+    # create snmp test as type says 'SNMP'
     def create_snmp_test(self, test_file, word_list):
         test_file.create_snmp_test(word_list)
-        self.current_dict_of_commands = self.dict_of_snmp_commands
+        self.current_dict_of_commands = self.dict_of_basic_commands
+        self.current_test_type = 'SNMP'
+
+    # sets name of current test as the words after 'NAME:' says
+    def set_test_name(self, test_file, word_list):
+        test_file.set_test_name(' '.join(word_list))
+        word_list[:] = []
+
+    # after calling 'TEST:'
+    def start_reading_test(self, test_file, word_list):
+        # cutting the 'EXPECT' part
+        word_list[:] = word_list[1:]
+        # changing dictionary of commands into the correct one
+        if self.current_test_type == 'DLEP':
+            self.current_dict_of_commands = self.dict_of_dlep_commands
+        elif self.current_test_type == 'SNMP':
+            self.current_dict_of_commands = self.dict_of_snmp_commands
         
-    def expect_something(self, test_file, word_list):
-        # the cutting was earlier, so have nothing to do
-        pass
 
     ############################
     # dlep commands' functions #
     ############################
 
+    def set_signal(self, test_file, word_list):
+        # next string should be signal
+        test_file.set_signal(word_list[0])
+        # cut the used signal which was already saved
+        word_list[:] = word_list[1:]
+
+    def set_to_include(self, test_file, word_list):
+        # set test to include, than what to include? (next string should be DATA_ITEM or SUB_DATA_ITEM)
+        test_file.set_include('to include', word_list[0])
+        # cut the used item which was already saved
+        word_list[:] = word_list[1:]
+
+    def set_to_not_include(self, test_file, word_list):
+        # set test to not include, than what to include? (next string should be DATA_ITEM or SUB_DATA_ITEM)
+        test_file.set_include('to not include', word_list[0])
+        # cut the used item which was already saved
+        word_list[:] = word_list[1:]
 
     ############################
     # snmp commands' functions #
     ############################
+
+    def set_oid(self, test_file, word_list):
+        # next string should be oid
+        test_file.set_oid(word_list[0])
+        # cut the used oid which was already saved
+        word_list[:] = word_list[1:]
+
+    def set_to_be(self, test_file, word_list):
+        # next string should be READONLY/SETTABLE
+        test_file.set_to_be(word_list[0])
+        # cut the used READONLY/SETTABLE which was already saved
+        word_list[:] = word_list[1:]
+
+    def set_mib_type(self, test_file, word_list):
+        # next string should be INTEGER/OCTET_STRING
+        test_file.set_mib_type(word_list[0])
+        # cut the used INTEGER/OCTET_STRING which was already saved
+        word_list[:] = word_list[1:]
+
+    def set_mib_value(self, test_file, word_list):
+        # next string should be the value we're suppose to expect
+        test_file.set_mib_value(word_list[0])
+        # cut the used value which was already saved
+        word_list[:] = word_list[1:]
 
 
