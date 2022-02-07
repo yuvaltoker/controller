@@ -37,7 +37,8 @@ def parse_file(file):
 def main():
     #json_available_test_suites = folder_read_to_json('/tests/*')
     #print(json_available_test_suites)
-    parse_file('/tests/snmp/simple-snmp-test.tdf')
+    #parse_file('/tests/snmp/simple-snmp-test.tdf')
+    parse_file('/tests/dlep/dlep-8703.tdf')
 
 
 

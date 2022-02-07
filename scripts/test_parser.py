@@ -1,5 +1,4 @@
 
-from cgi import test
 from tests import TestFile
 import logging
 
@@ -12,6 +11,9 @@ class CannotBeParsedError(Error):
     def __init__(self, message):
         self.message = message
         super(CannotBeParsedError, self).__init__(message)
+
+    def get_message(self):
+        return self.message
 
 def configure_logger_logging(logger, logging_level, logging_file):
         logger.setLevel(logging_level)
@@ -37,7 +39,7 @@ def configure_logger_logging(logger, logging_level, logging_file):
 class TestsParser:
     def __init__(self, logging_level, logging_file = None):
         # self.list_of_basic_commands includes the key words/signs which later help cutting the test into small pieces 
-        self.dict_of_basic_commands = {'TYPE' : self.set_test_type, \
+        self.dict_of_basic_commands = {'TYPE:' : self.set_test_type, \
                                     'NAME:' : self.set_test_name, \
                                     'TEST:' : self.start_reading_test}
         self.dict_of_test_type = {'DLEP' : self.create_dlep_test, \
@@ -69,17 +71,25 @@ class TestsParser:
         try:
             for line in file_lines:
                 word_list = line.split(' ')
+                # removing all the '' in the list, it'll raise an exception when '' will not be exist anymore
+                try:
+                    word_list = [word for word in word_list if word != '']
+                except:
+                    pass
                 self.logger.debug(word_list)
-                while len(word_list):
+                # while there is at least 1 word in line
+                while len(word_list) and word_list[0] != '':  
                     # this function can raise an exception
                     self.logger.debug(word_list)
                     self.cut_and_parse_into_variables(test_file, word_list)
                 if test_file.check_if_current_test_ready():
                     # add the current test into list of tests
                     test_file.add_test()
+                    
             self.test_files.append(test_file)
+            self.logger.info(test_file.get_tests_jsons())
         except CannotBeParsedError as e:
-            self.logger.warning('file {} cannot be parsed. error message -> {}'.format(file, e.__str__))
+            self.logger.warning('file {} cannot be parsed. error message -> {}'.format(file, e.get_message()))
 
     
     def cut_and_parse_into_variables(self, test_file, word_list):
@@ -95,9 +105,17 @@ class TestsParser:
     def call_fuction_by_list(self, test_file, word_list):
         function_to_call = word_list[0]
         # the first word's cutting happens here, word_list[1:]
-        word_list[:] = word_list[1:]
+        #word_list[:] = word_list[1:]
+        self.cut_next_words(word_list, 1)
         # call to function by the given key-word 
         self.current_dict_of_commands[function_to_call](test_file, word_list)
+
+    def cut_next_words(self, word_list, num_of_words):
+        after_cutting = word_list[num_of_words:]
+        if after_cutting == ['']:
+            word_list[:] = []
+        else:
+            word_list[:] = after_cutting
             
 
     #############################
@@ -131,13 +149,12 @@ class TestsParser:
     # after calling 'TEST:'
     def start_reading_test(self, test_file, word_list):
         # cutting the 'EXPECT' part
-        word_list[:] = word_list[1:]
+        self.cut_next_words(word_list, 1)
         # changing dictionary of commands into the correct one
         if self.current_test_type == 'DLEP':
             self.current_dict_of_commands = self.dict_of_dlep_commands
         elif self.current_test_type == 'SNMP':
             self.current_dict_of_commands = self.dict_of_snmp_commands
-        
 
     ############################
     # dlep commands' functions #
@@ -147,19 +164,19 @@ class TestsParser:
         # next string should be signal
         test_file.set_signal(word_list[0])
         # cut the used signal which was already saved
-        word_list[:] = word_list[1:]
+        self.cut_next_words(word_list, 1)
 
     def set_to_include(self, test_file, word_list):
-        # set test to include, than what to include? (next string should be DATA_ITEM or SUB_DATA_ITEM)
-        test_file.set_include('to include', word_list[0])
+        # set test to include, than what to include? (next string should be DATA_ITEM or SUB_DATA_ITEM and then the item itself)
+        test_file.set_include('To include', word_list[1])
         # cut the used item which was already saved
-        word_list[:] = word_list[1:]
+        self.cut_next_words(word_list, 2)
 
     def set_to_not_include(self, test_file, word_list):
-        # set test to not include, than what to include? (next string should be DATA_ITEM or SUB_DATA_ITEM)
-        test_file.set_include('to not include', word_list[0])
+        # set test to not include, than what to include? (next string should be DATA_ITEM or SUB_DATA_ITEM and then the item itself)
+        test_file.set_include('To not include', word_list[1])
         # cut the used item which was already saved
-        word_list[:] = word_list[1:]
+        self.cut_next_words(word_list, 2)
 
     ############################
     # snmp commands' functions #
@@ -169,24 +186,24 @@ class TestsParser:
         # next string should be oid
         test_file.set_oid(word_list[0])
         # cut the used oid which was already saved
-        word_list[:] = word_list[1:]
+        self.cut_next_words(word_list, 1)
 
     def set_to_be(self, test_file, word_list):
         # next string should be READONLY/SETTABLE
         test_file.set_to_be(word_list[0])
         # cut the used READONLY/SETTABLE which was already saved
-        word_list[:] = word_list[1:]
+        self.cut_next_words(word_list, 1)
 
     def set_mib_type(self, test_file, word_list):
         # next string should be INTEGER/OCTET_STRING
         test_file.set_mib_type(word_list[0])
         # cut the used INTEGER/OCTET_STRING which was already saved
-        word_list[:] = word_list[1:]
+        self.cut_next_words(word_list, 1)
 
     def set_mib_value(self, test_file, word_list):
         # next string should be the value we're suppose to expect
         test_file.set_mib_value(word_list[0])
         # cut the used value which was already saved
-        word_list[:] = word_list[1:]
+        self.cut_next_words(word_list, 1)
 
 
