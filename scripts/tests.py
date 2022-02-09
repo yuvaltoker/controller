@@ -16,6 +16,22 @@ class TestFile:
         elif self.current_test.get_test_type() == 'SNMP':
             self.snmp_tests.append(self.current_test)
 
+    def get_dlep_tests(self):
+        return self.dlep_tests
+
+    def get_snmp_tests(self):
+        return self.snmp_tests
+
+    def has_dlep_tests(self):
+        if len(self.dlep_tests):
+            return True
+        return False
+
+    def has_snmp_tests(self):
+        if len(self.snmp_tests):
+            return True
+        return False
+
     def set_test_name(self, name):
         self.current_test.set_name(name)
 
@@ -111,7 +127,11 @@ class DlepTest:
         return self.test_to_json()
     
     def check_if_test_ready(self):
-        return True
+        if self.name != '' and self.signal != '' and self.is_signal_need_to_include != '' and self.data_item != '':
+            if self.is_data_item_need_to_include != '' and self.sub_data_item == '':
+                return False
+            return True
+        return False
     
 
 
@@ -154,4 +174,6 @@ class SnmpTest:
         return self.full_test
 
     def check_if_test_ready(self):
-        return True
+        if self.name != '' and self.oid != '' and self.command != '' and self.mib_type != '':
+            return True
+        return False

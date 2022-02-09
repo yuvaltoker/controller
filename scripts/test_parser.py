@@ -48,7 +48,6 @@ class TestsParser:
         self.dict_of_snmp_commands = {'OID' : self.set_oid, 'TO_BE' : self.set_to_be, 'OF_TYPE' : self.set_mib_type, 'WITH_VALUE' : self.set_mib_value}
         self.current_dict_of_commands = self.dict_of_basic_commands
         self.current_test_type = ''
-        self.tests = []
         self.test_files = []
         # logging
         logger = logging.getLogger('test_parser')
@@ -87,7 +86,9 @@ class TestsParser:
                     test_file.add_test()
                     
             self.test_files.append(test_file)
-            self.logger.info(test_file.get_tests_jsons())
+            tests_jsons = test_file.get_tests_jsons()
+            for test_json in tests_jsons:
+                self.logger.info(test_json)
         except CannotBeParsedError as e:
             self.logger.warning('file {} cannot be parsed. error message -> {}'.format(file, e.get_message()))
 
@@ -116,6 +117,25 @@ class TestsParser:
             word_list[:] = []
         else:
             word_list[:] = after_cutting
+
+    # returns a dict of files which succeeded the parsing as {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}
+    def get_test_files_after_parsing(self):
+        all_tests_files = {}
+        found_dlep = False
+        found_snmp = False
+        for test_file in self.test_files:
+            if test_file.has_dlep_tests():
+                if not found_dlep:
+                    all_tests_files['dlep'] = []
+                    found_dlep = True
+                all_tests_files['dlep'].append(test_file)
+                
+            if test_file.has_snmp_tests():
+                if not found_snmp:
+                    all_tests_files['snmp'] = []
+                    found_snmp = True
+                all_tests_files['snmp'].append(test_file)
+        return all_tests_files
             
 
     #############################
