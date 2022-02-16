@@ -49,10 +49,10 @@ def main():
     # next line returns a dict of files which succeeded the parsing as {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}
     parsed_files = test_parser.get_test_files_after_parsing()
     # remove all the non-exist files after parsing
-    for inxed1, test_suite in enumerate(json_available_test_suites['TestSuites']):
-        for index2, test_file in enumerate(json_available_test_suites[inxed1]['Tests']):
-            if not test_file in parsed_files['dlep'] and not test_file in parsed_files['snmp']:
-                del json_available_test_suites[inxed1]['Tests'][index2]
+    #for inxed1, test_suite in enumerate(json_available_test_suites['TestSuites']):
+    #    for index2, test_file in enumerate(json_available_test_suites[inxed1]['Tests']):
+    #        if not test_file in parsed_files['dlep'] and not test_file in parsed_files['snmp']:
+    #            del json_available_test_suites[inxed1]['Tests'][index2]
     print(json_available_test_suites)
 
     #parse_file('/tests/dlep/dlep-8703.tdf')
