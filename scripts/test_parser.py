@@ -66,7 +66,7 @@ class TestsParser:
 
     def parse_file(self, file):
         file_lines = self.file_to_lines(file)
-        test_file = TestFile()
+        test_file = TestFile(file)
         try:
             for line in file_lines:
                 word_list = line.split(' ')
@@ -84,13 +84,15 @@ class TestsParser:
                 if test_file.check_if_current_test_ready():
                     # add the current test into list of tests
                     test_file.add_test()
+                else:
+                    raise CannotBeParsedError('could not parse one of {} tests'.format(test_file.get_file_name()))
                     
             self.test_files.append(test_file)
             tests_jsons = test_file.get_tests_jsons()
             for test_json in tests_jsons:
                 self.logger.info(test_json)
         except CannotBeParsedError as e:
-            self.logger.warning('file {} cannot be parsed. error message -> {}'.format(file, e.get_message()))
+            self.logger.error('file {} cannot be parsed. error message -> {}'.format(file, e.get_message()))
 
     
     def cut_and_parse_into_variables(self, test_file, word_list):
@@ -128,13 +130,13 @@ class TestsParser:
                 if not found_dlep:
                     all_tests_files['dlep'] = []
                     found_dlep = True
-                all_tests_files['dlep'].append(test_file)
+                all_tests_files['dlep'].append(test_file.get_file_name())
                 
             if test_file.has_snmp_tests():
                 if not found_snmp:
                     all_tests_files['snmp'] = []
                     found_snmp = True
-                all_tests_files['snmp'].append(test_file)
+                all_tests_files['snmp'].append(test_file.get_file_name())
         return all_tests_files
             
 

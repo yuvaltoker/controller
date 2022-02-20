@@ -2,9 +2,10 @@
 
 
 class TestFile:
-    def __init__(self):
+    def __init__(self, file_name):
         self.dlep_tests = []
         self.snmp_tests = []
+        self.file_name = file_name
         self.current_test = None
 
     def check_if_current_test_ready(self):
@@ -15,6 +16,9 @@ class TestFile:
             self.dlep_tests.append(self.current_test)
         elif self.current_test.get_test_type() == 'SNMP':
             self.snmp_tests.append(self.current_test)
+
+    def get_file_name(self):
+        return self.file_name
 
     def get_dlep_tests(self):
         return self.dlep_tests
