@@ -57,6 +57,11 @@ class TestsParser:
         configure_logger_logging(logger, logging_level, logging_file)
         self.logger = logger
 
+    def reset_dict_of_states(self):
+        self.dict_of_states['TYPE'] = False
+        self.dict_of_states['NAME'] = False
+        self.dict_of_states['TEST'] = False
+
     def file_to_lines(self, file):
         with open(file, 'r') as file:
             file_lines = file.readlines()
@@ -66,12 +71,16 @@ class TestsParser:
     def parse_files(self, files):
         for file in files:
             self.parse_file(file)
+            self.reset_dict_of_states()
 
     def parse_file(self, file):
         file_lines = self.file_to_lines(file)
         test_file = TestFile(file)
         try:
             for line in file_lines:
+                # ignores empty lines
+                if line == '':
+                    continue
                 word_list = line.split(' ')
                 # removing all the '' in the list, it'll raise an exception when '' will not be exist anymore
                 try:
@@ -86,11 +95,10 @@ class TestsParser:
                     self.cut_and_parse_into_variables(test_file, word_list)
                 if test_file.check_if_current_test_ready():
                     # add the current test into list of tests
+                    self.logger.info(line)
                     test_file.add_test()
                     # reset the dictionary of states for the next tests
-                    self.dict_of_states['TYPE'] = False
-                    self.dict_of_states['NAME'] = False
-                    self.dict_of_states['TEST'] = False
+                    self.reset_dict_of_states()
                 # if we've already read the TEST line, but the test is not ready, it means the test failed to be parsed, thus we don't want the file
                 elif self.dict_of_states['TEST'] is True:
                     raise CannotBeParsedError('could not parse one of {} tests'.format(test_file.get_file_name()))
@@ -103,6 +111,7 @@ class TestsParser:
                     self.logger.info(test_json)
         except CannotBeParsedError as e:
             self.logger.error('file {} cannot be parsed. error message -> {}'.format(file, e.get_message()))
+            self.reset_dict_of_states()
 
     
     def cut_and_parse_into_variables(self, test_file, word_list):

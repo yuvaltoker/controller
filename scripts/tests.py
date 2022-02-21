@@ -67,7 +67,7 @@ class TestFile:
 
     # for snmp, as hit the value
     def set_mib_value(self, mib_value):
-        self.current_test.set_mib_type(mib_value)
+        self.current_test.set_mib_value(mib_value)
 
     def delete_test(self, test):
         if test in self.dlep_tests:
