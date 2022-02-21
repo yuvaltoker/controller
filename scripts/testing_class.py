@@ -6,7 +6,7 @@ import logging
 from test_parser import TestsParser
 
 logging_file = None
-logging_level = logging.DEBUG
+logging_level = logging.INFO
 
 def get_files_to_list(path):
     all_files = []

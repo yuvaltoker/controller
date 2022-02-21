@@ -1,4 +1,6 @@
 
+from cgi import test
+from pickle import TRUE
 from tests import TestFile
 import logging
 
@@ -46,6 +48,7 @@ class TestsParser:
                                 'SNMP' : self.create_snmp_test}
         self.dict_of_dlep_commands = {'SIGNAL' : self.set_signal, 'TO_INCLUDE' : self.set_to_include, 'TO_NOT_INCLUDE' : self.set_to_not_include}
         self.dict_of_snmp_commands = {'OID' : self.set_oid, 'TO_BE' : self.set_to_be, 'OF_TYPE' : self.set_mib_type, 'WITH_VALUE' : self.set_mib_value}
+        self.dict_of_states = {'TYPE' : False, 'NAME' : False, 'TEST' : False}
         self.current_dict_of_commands = self.dict_of_basic_commands
         self.current_test_type = ''
         self.test_files = []
@@ -84,13 +87,20 @@ class TestsParser:
                 if test_file.check_if_current_test_ready():
                     # add the current test into list of tests
                     test_file.add_test()
-                else:
+                    # reset the dictionary of states for the next tests
+                    self.dict_of_states['TYPE'] = False
+                    self.dict_of_states['NAME'] = False
+                    self.dict_of_states['TEST'] = False
+                # if we've already read the TEST line, but the test is not ready, it means the test failed to be parsed, thus we don't want the file
+                elif self.dict_of_states['TEST'] is True:
                     raise CannotBeParsedError('could not parse one of {} tests'.format(test_file.get_file_name()))
                     
-            self.test_files.append(test_file)
-            tests_jsons = test_file.get_tests_jsons()
-            for test_json in tests_jsons:
-                self.logger.info(test_json)
+            if test_file.has_dlep_tests() or test_file.has_snmp_tests():
+                self.test_files.append(test_file)
+                tests_jsons = test_file.get_tests_jsons()
+                self.logger.info('File {} tests:'.format(test_file.get_file_name()))
+                for test_json in tests_jsons:
+                    self.logger.info(test_json)
         except CannotBeParsedError as e:
             self.logger.error('file {} cannot be parsed. error message -> {}'.format(file, e.get_message()))
 
@@ -147,6 +157,7 @@ class TestsParser:
     # after calling 'TYPE:'
     def set_test_type(self, test_file, word_list):
         # redirect the list of commands to read from dictionary of test type
+        self.dict_of_states['TYPE'] = True
         self.current_dict_of_commands = self.dict_of_test_type
         # there is not another cutting here, the next time cut_and_parse_into_variables will be called
         # it will call to the right function from the self.dict_of_test_type
@@ -165,11 +176,13 @@ class TestsParser:
 
     # sets name of current test as the words after 'NAME:' says
     def set_test_name(self, test_file, word_list):
+        self.dict_of_states['NAME'] = True
         test_file.set_test_name(' '.join(word_list))
         word_list[:] = []
 
     # after calling 'TEST:'
     def start_reading_test(self, test_file, word_list):
+        self.dict_of_states['TEST'] = True
         # cutting the 'EXPECT' part
         self.cut_next_words(word_list, 1)
         # changing dictionary of commands into the correct one

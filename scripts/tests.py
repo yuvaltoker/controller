@@ -1,4 +1,4 @@
-# this file will include- TestFile(?), DlepTest, SnmpTest
+# this file will include- TestFile, DlepTest, SnmpTest
 
 
 class TestFile:
@@ -81,9 +81,9 @@ class TestFile:
     def get_tests_jsons(self):
         all_tests = []
         dlep_tests_to_strings = [self.get_test(test) for test in self.dlep_tests]
-        #snmp_tests_to_strings = [self.get_test(test) for test in self.snmp_tests] # isn't written yet
-        all_tests.append(dlep_tests_to_strings)
-        # all_tests.append(snmp_tests_to_strings)
+        snmp_tests_to_strings = [self.get_test(test) for test in self.snmp_tests]
+        all_tests.extend(dlep_tests_to_strings)
+        all_tests.extend(snmp_tests_to_strings)
         return all_tests
 
 
@@ -171,11 +171,17 @@ class SnmpTest:
     def set_mib_value(self, mib_value):
         self.mib_value = mib_value
 
-    def build_test(self):
-        self.full_test = '{}, {}, {}'.format(self.oid, self.command, self.value)
+    def test_to_json(self):
+        json_test = {}
+        json_test['Type'] = self.get_test_type()
+        json_test['Name'] = self.name
+        json_test['Test'] = {'Oid' : self.oid, 'To be' : self.command, 'Mib type' : self.mib_type}
+        if self.mib_value != '':
+            json_test['Test']['Mib value'] = self.mib_value
+        return json_test
 
     def get_test(self):
-        return self.full_test
+        return self.test_to_json()
 
     def check_if_test_ready(self):
         if self.name != '' and self.oid != '' and self.command != '' and self.mib_type != '':
