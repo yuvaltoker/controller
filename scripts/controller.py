@@ -86,8 +86,6 @@ def create_basic_files_list(path):
     # stage 2
     for folder in folders:
         paths.extend(get_files_to_list(folder + '/*.tdf'))
-    print(folders)
-    print(paths)
     return paths
 
 # gets {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}
@@ -98,7 +96,6 @@ def create_available_test_suites_json(json_paths):
     for key, val in json_paths.items():
         test_suite = {}
         test_suite['Name'] = key
-        print(val)
         test_suite['Tests Files'] = val
 
         # insert() takes 2 arguments, so in order to insert to the end, we'll give position as the end of the list
@@ -121,7 +118,7 @@ def make_test_list():
     test_parser.parse_files(all_files)
     # next line returns a dict of files which succeeded the parsing as {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}
     parsed_files_json = test_parser.get_test_files_after_parsing()
-    print('parsed_files_json: {}'.format(parsed_files_json))
+    logger.info('parsed_files_json: {}'.format(parsed_files_json))
     available_test_suites = create_available_test_suites_json(parsed_files_json)
     # insert the json into mongoDB
     uid = mdb_handler.insert_document('Configuration', available_test_suites)  
