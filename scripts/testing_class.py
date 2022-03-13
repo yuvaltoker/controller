@@ -1,4 +1,4 @@
-from cgi import test
+#from cgi import test
 import glob
 import json
 import logging
@@ -58,7 +58,6 @@ def create_available_test_suites_json(json_paths):
         print(val)
         test_suite['Tests Files'] = val
 
-        #test_suite['Tests'].extend(paths)
         # insert() takes 2 arguments, so in order to insert to the end, we'll give position as the end of the list
         test_suites.insert(len(test_suites), test_suite)
     available_test_suites = {'ConfigType' : 'AvailableTestSuites', 'TestSuites' : test_suites}
