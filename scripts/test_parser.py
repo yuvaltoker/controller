@@ -57,6 +57,9 @@ class TestsParser:
         configure_logger_logging(logger, logging_level, logging_file)
         self.logger = logger
 
+    def get_test_files(self):
+        return self.test_files
+
     def reset_dict_of_states(self):
         self.dict_of_states['TYPE'] = False
         self.dict_of_states['NAME'] = False

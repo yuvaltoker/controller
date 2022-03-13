@@ -20,6 +20,12 @@ from pandas import DataFrame
 # for background waiting function, use multiproccessing
 from multiprocessing import Process, Manager
 
+# for testing with TestParser
+from test_parser import TestsParser
+
+# for reading files from path
+import glob
+
 # for delay use
 import time
 
@@ -62,34 +68,69 @@ def configure_logger_logging(logging_level):
     # add the handlers to logger
     logger.addHandler(console_handler)
 
+def get_files_to_list(path):
+    all_files = []
+    for file in glob.glob(path):
+        all_files.append(file)
+    return all_files
+
+# create the next list from /tests/ path:
+# [path1, path2, path3, ..., pathN]
+# doing that by:
+# stage 1: create list of all folders ['/tests/snmp', '/tests/snmp']
+# stage 2: create a list of all the files in those paths, that means all the /tests/**/*.tdf
+def create_basic_files_list(path):
+    # stage 1
+    folders = get_files_to_list(path)
+    paths = []
+    # stage 2
+    for folder in folders:
+        paths.extend(get_files_to_list(folder + '/*.tdf'))
+    print(folders)
+    print(paths)
+    return paths
+
+# gets {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}
+# creates available_test_suites_json
+# returns the created json
+def create_available_test_suites_json(json_paths):
+    test_suites = []
+    for key, val in json_paths.items():
+        test_suite = {}
+        test_suite['Name'] = key
+        print(val)
+        test_suite['Tests Files'] = val
+
+        # insert() takes 2 arguments, so in order to insert to the end, we'll give position as the end of the list
+        test_suites.insert(len(test_suites), test_suite)
+    available_test_suites = {'ConfigType' : 'AvailableTestSuites', 'TestSuites' : test_suites}
+    return available_test_suites
+
 # first function to be called
+# this function handles reading test files and parsing them, inserts @available_test_suites to mongoDB and sends over rabbitmq the uid of the inserted document
+# returning parsed test files list
 def make_test_list():
     message = 'ctrl: test list in proggress...'
     logger.info(message)
-    time.sleep(time_delay)
-    json_document_test_suits_example = '''{
-	"ConfigType": "AvailableTestSuites",
-	"TestSuites": [
-		    {
-		    	"Name": "dlep",
-		    	"Tests": [
-		    		"dlep/dlep-8175.tdf",
-		    		"dlep/dlep-8703.tdf"
-		    	]
-		    },
-		    {
-		    	"Name": "snmp",
-		    	"Tests": [
-		    		"snmp/battery-MIB.tdf",
-		    		"snmp/network-MIB.tdf"
-		    	]
-		    }
-	    ]
-    }'''
-    uid = mdb_handler.insert_document('Configuration', loads(json_document_test_suits_example))  
+
+    tests_path = '/tests/*'
+    # creating list of all test files from path
+    all_files = create_basic_files_list(tests_path)
+    # creating @TestParser and parsing all files, filtering bad files
+    test_parser = TestsParser(logging_level)
+    test_parser.parse_files(all_files)
+    # next line returns a dict of files which succeeded the parsing as {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}
+    parsed_files_json = test_parser.get_test_files_after_parsing()
+    print('parsed_files_json: {}'.format(parsed_files_json))
+    available_test_suites = create_available_test_suites_json(parsed_files_json)
+    # insert the json into mongoDB
+    uid = mdb_handler.insert_document('Configuration', available_test_suites)  
     message = 'ctrl: test list ready'
     logger.info(message)
+    # sends over rabbitmq the uid of the inserted document
     rmq_handler.send('', 'tests_list', str(uid))
+    # returning full parsed @TestFile list for later use of running tests
+    return test_parser.get_test_files()
 
 def is_setup_ready():
     message = 'ctrl: setup_ready flag - {0}'.format(flags[1]['setup_ready'])
@@ -156,7 +197,7 @@ def all_results_ready():
     rmq_handler.send('', 'pdf_ready', link)
     
 def controller_flow():
-    make_test_list()
+    parsed_testfile_list = make_test_list()
     setup_ready_event_handler()
     time.sleep(time_delay)
     run_tests(3)

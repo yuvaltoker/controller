@@ -11,7 +11,7 @@ services:
                 #depends_on:
                 #    - rabbitmq
                 networks:
-                    - net1
+                    - lan
                 environment:
                     - RMQ_HOST=rabbitmq
                     - QUEUE_NAMES=tests_list,setup_ready,results,all_results_ready,pdfs,pdf_ready
@@ -22,56 +22,71 @@ services:
                     - TIME_DELAY=2
                     - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
                 volumes:
-                    - /home/user2/work/idf/controller/scripts:/controller-scripts
+                #    - /home/user2/work/idf/controller/scripts:/controller-scripts
                     - /home/user2/work/idf/controller/tests:/tests 
-        #app:
-        #        hostname: app
-        #        image: samyon196/rri-app-stub:0.0.1
-        #        networks: 
-        #          - net1
-        #        environment:
-        #          DB_URL: mongodb://root:example@mongodb:27017
-        #          MQ_URL: amqp://rabbitmq:5672
-        #          WAIT_HOSTS: rabbitmq:5672, mongodb:27017
-#
-        #dlep:
-        #        hostname: dlep
-        #        image: samyon196/rri-dlep-stub:0.0.1
-        #        networks: 
-        #          - net1
-        #        environment:
-        #          DB_URL: mongodb://root:example@mongodb:27017
-        #          MQ_URL: amqp://rabbitmq:5672
-        #          WAIT_TIME_MS: 1003
-        #          WAIT_HOSTS: rabbitmq:5672, mongodb:27017
-#
-        #report-generator:
-        #        #image: test-changes-dlep:1.7
-        #        build:
-        #            context: .
-        #            dockerfile: ./report-generator-Dockerfile
-        #        tty: true
-        #        stdin_open: true
-        #        depends_on:
-        #            - rabbitmq
-        #        networks:
-        #            - net1
-        #        environment:
-        #            - RMQ_HOST=rabbitmq
-        #            - QUEUE_NAMES=pdfs
-        #            - MONGO_INITDB_ROOT_USERNAME=root
-        #            - MONGO_INITDB_ROOT_PASSWORD=example
-        #            - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
-        #            - DB_NAME=rri
-        #            - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
-        #        #volumes:
-        #        #    - /home/user2/work/idf/controller/scripts:/report-generator-scripts    
+        app:
+                hostname: app
+                image: samyon196/rri-app-stub:0.0.1
+                networks: 
+                  - lan
+                environment:
+                  DB_URL: mongodb://root:example@mongodb:27017
+                  MQ_URL: amqp://rabbitmq:5672
+                  WAIT_HOSTS: rabbitmq:5672, mongodb:27017
+
+        dlep:
+                hostname: dlep
+                image: samyon196/rri-dlep-stub:0.0.1
+                networks: 
+                  - lan
+                environment:
+                  DB_URL: mongodb://root:example@mongodb:27017
+                  MQ_URL: amqp://rabbitmq:5672
+                  WAIT_TIME_MS: 1003
+                  WAIT_HOSTS: rabbitmq:5672, mongodb:27017
+
+        minIO:
+                image:  minio/minio
+                container_name  : minIO
+                hostname: my_minio
+                environment: 
+                  - "MINIO_ROOT_USER=user"
+                  - "MINIO_ROOT_PASSWORD=password"
+                expose:
+                  - 9001
+                  - 9000
+                volumes:
+                  - /home/dev/mdata:/data
+                depends_on:
+                  - rabbitmq
+                command: server /data --console-address ":9001"
+                networks:
+                  - lan
+                restart: unless-stopped
+
+        report_generator:
+                image : dannaor/report_generator:0.0.2
+                container_name: report_generator
+                environment:
+                 - MINIO_HOSTNAME=my_minio
+                 - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
+                 - RMQ_HOST=rabbitmq
+                 - MONGO_INITDB_ROOT_USERNAME=root
+                 - MONGO_INITDB_ROOT_PASSWORD=example
+                 - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
+                 - DB_NAME=rri
+                 - QUEUE_NAMES=pdfs
+                 - MINIO_ROOT_USER=user
+                 - MINIO_ROOT_PASSWORD=password
+                entrypoint: ["/bin/sh","-c","/app/wait && ./report_generator.py"]
+                networks:
+                  - lan
 
         rabbitmq:
                 image: rabbitmq:3.9.8-management-alpine
                 container_name: rabbitmq
                 networks:
-                    - net1
+                    - lan
                 ports: 
                     - "15672:15672"
                     - "5672:5672"
@@ -85,7 +100,7 @@ services:
                 image: mongo
                 container_name: mongodb
                 networks:
-                    - net1
+                    - lan
                 ports: 
                     - "27017:27017"
                 restart: always
@@ -97,7 +112,7 @@ services:
                 image: mongo-express
                 container_name: mongo-express
                 networks:
-                    - net1
+                    - lan
                 ports: 
                     - "8081:8081"
                 restart: always
@@ -106,8 +121,16 @@ services:
                     - ME_CONFIG_MONGODB_ADMINPASSWORD=example
                     - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
 
+        dozzle:
+            container_name: dozzle
+            image: amir20/dozzle:latest
+            volumes:
+              - /var/run/docker.sock:/var/run/docker.sock
+            ports:
+              - "5555:8080"
+
 
 networks:
-    net1:
-        name: net1
+    lan:
+        name: lan
         driver: bridge
