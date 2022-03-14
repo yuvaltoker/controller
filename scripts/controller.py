@@ -162,8 +162,9 @@ def pdfs_ready_event_handler():
     return flags[1]['pdf_link']
 
 # input: list of files to execute
-def remove_unchosen_tests(self):
-    pass
+def remove_unchosen_tests():
+    suites_to_run = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {'SuitesToRun'})
+    logger.info(suites_to_run)
 
 def run_test():
     json_document_result_example = '''{
@@ -201,9 +202,10 @@ def controller_flow():
     parsed_testfile_list = make_test_list()
     setup_ready_event_handler()
     time.sleep(time_delay)
-    run_tests(3)
-    time.sleep(time_delay)
-    all_results_ready()
+    remove_unchosen_tests()
+    #run_tests(3)
+    #time.sleep(time_delay)
+    #all_results_ready()
 
 def main():
     flags[1] = {'setup_ready' : False, 'pdfs_ready' : False, 'pdf_link' : ''}
