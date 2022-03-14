@@ -161,6 +161,10 @@ def pdfs_ready_event_handler():
     logger.info(message)
     return flags[1]['pdf_link']
 
+# input: list of files to execute
+def remove_unchosen_tests(self):
+    pass
+
 def run_test():
     json_document_result_example = '''{
 	    "name": "Check if the signal Peer_Offer includes data item Peer_Type",

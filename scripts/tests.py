@@ -1,5 +1,7 @@
 # this file will include- TestFile, DlepTest, SnmpTest
 
+# for easy read/write on mongodb
+from mongodb_handler import MongodbHandler
 
 class TestFile:
     def __init__(self, file_name):
@@ -86,6 +88,9 @@ class TestFile:
         all_tests.extend(snmp_tests_to_strings)
         return all_tests
 
+    def exec_all_tests(self):
+        pass
+
 
 
 class DlepTest:
@@ -136,6 +141,9 @@ class DlepTest:
                 return False
             return True
         return False
+
+    def exec_test(self):
+        pass
     
 
 
@@ -187,3 +195,6 @@ class SnmpTest:
         if self.name != '' and self.oid != '' and self.command != '' and self.mib_type != '':
             return True
         return False
+
+    def exec_test(self):
+        pass
