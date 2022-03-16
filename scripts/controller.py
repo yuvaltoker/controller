@@ -161,9 +161,12 @@ def pdfs_ready_event_handler():
     logger.info(message)
     return flags[1]['pdf_link']
 
-# input: list of files to execute
-def remove_unchosen_tests():
-    suites_to_run = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {'SuitesToRun'})
+# input: list of parsed files
+# picks test files by the list of files given from app (in mongoDB 'Configuration' collection, in 'ConfigType' = 'TestConfig')
+def pick_chosen_tests(parsed_files):
+    # getting filtered document by ConfigType, then getting
+    suites_to_run = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {})['SuitesToRun']
+
     logger.info(suites_to_run)
 
 def run_test():
@@ -202,7 +205,7 @@ def controller_flow():
     parsed_testfile_list = make_test_list()
     setup_ready_event_handler()
     time.sleep(time_delay)
-    remove_unchosen_tests()
+    remove_unchosen_tests(parsed_testfile_list)
     #run_tests(3)
     #time.sleep(time_delay)
     #all_results_ready()
