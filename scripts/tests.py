@@ -7,6 +7,7 @@ class TestFile:
     def __init__(self, file_name):
         self.dlep_tests = []
         self.snmp_tests = []
+        self.tests = []
         self.file_name = file_name
         self.current_test = None
 
@@ -92,6 +93,25 @@ class TestFile:
         pass
 
 
+class Test:
+    def __init__(self, test_word_list):
+        self.test_word_list = test_word_list
+        self.type = ''
+        self.name = ''
+        # agent suppose to be responsible for parsing and execute the test
+        self.agent = None
+
+    def get_type(self):
+        return self.type
+
+    def get_name(self):
+        return self.type
+
+    def set_type(self, type):
+        self.type = type 
+
+    def set_name(self, name):
+        self.name = name 
 
 class DlepTest:
     def __init__(self, test_word_list):
