@@ -20,8 +20,8 @@ from pandas import DataFrame
 # for background waiting function, use multiproccessing
 from multiprocessing import Process, Manager
 
-# for testing with TestParser
-from test_parser import TestsParser
+# for testing with TestFilesParser
+from test_parser import TestFilesParser
 
 # for reading files from path
 import glob
@@ -114,7 +114,7 @@ def make_test_list():
     # creating list of all test files from path
     all_files = create_basic_files_list(tests_path)
     # creating @TestParser and parsing all files, filtering bad files
-    test_parser = TestsParser(logging_level)
+    test_parser = TestFilesParser(logging_level)
     test_parser.parse_files(all_files)
     # next line returns a dict of files which succeeded the parsing as {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}
     parsed_files_json = test_parser.get_test_files_after_parsing()

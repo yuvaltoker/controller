@@ -94,9 +94,9 @@ class TestFile:
 
 
 class Test:
-    def __init__(self, test_word_list):
+    def __init__(self, test_word_list, type):
         self.test_word_list = test_word_list
-        self.type = ''
+        self.type = type
         self.name = ''
         # agent suppose to be responsible for parsing and execute the test
         self.agent = None
@@ -113,10 +113,9 @@ class Test:
     def set_name(self, name):
         self.name = name 
 
-class DlepTest:
-    def __init__(self, test_word_list):
-        self.test_word_list = test_word_list
-        self.name = ''
+class DlepTest(Test):
+    def __init__(self, test_word_list, type):
+        super().__init__(test_word_list, type)
         self.signal = ''
         self.is_signal_need_to_include = ''
         self.is_data_item_need_to_include = ''
@@ -124,12 +123,6 @@ class DlepTest:
         self.data_item = ''
         self.sub_data_item = ''
         self.full_test = ''
-
-    def get_test_type(self):
-        return 'DLEP'
-
-    def set_name(self, name):
-        self.name = name
 
     def set_signal(self, signal):
         self.signal = signal
@@ -144,7 +137,7 @@ class DlepTest:
 
     def test_to_json(self):
         json_test = {}
-        json_test['Type'] = self.get_test_type()
+        json_test['Type'] = self.type
         json_test['Name'] = self.name
         json_test['Test'] = {'Signal' : self.signal}
         json_test['Test'][self.is_signal_need_to_include] = {'Data Item' : self.data_item}
@@ -167,22 +160,15 @@ class DlepTest:
     
 
 
-class SnmpTest:
-    def __init__(self, test_word_list):
-        self.test_word_list = test_word_list
-        self.name = ''
+class SnmpTest(Test):
+    def __init__(self, test_word_list, type):
+        super().__init__(test_word_list, type)
         self.oid = ''
         # command can be READONLY/SETTABLE (get/set)
         self.command = ''
         self.mib_type = ''
         self.mib_value = ''
         self.full_test = ''
-
-    def get_test_type(self):
-        return 'SNMP'
-
-    def set_name(self, name):
-        self.name = name
 
     def set_oid(self, oid):
         self.oid = oid
@@ -201,7 +187,7 @@ class SnmpTest:
 
     def test_to_json(self):
         json_test = {}
-        json_test['Type'] = self.get_test_type()
+        json_test['Type'] = self.type
         json_test['Name'] = self.name
         json_test['Test'] = {'Oid' : self.oid, 'To be' : self.command, 'Mib type' : self.mib_type}
         if self.mib_value != '':

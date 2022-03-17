@@ -38,16 +38,25 @@ def configure_logger_logging(logger, logging_level, logging_file):
         # add the handlers to logger
         logger.addHandler(console_handler)
 
-class TestsParser:
+def cut_next_words(self, word_list, num_of_words):
+        after_cutting = word_list[num_of_words:]
+        if after_cutting == ['']:
+            word_list[:] = []
+        else:
+            word_list[:] = after_cutting
+
+class TestFilesParser:
     def __init__(self, logging_level, logging_file = None):
-        # self.list_of_basic_commands includes the key words/signs which later help cutting the test into small pieces 
+
+        self.dict_of_parsers = {'DLEP' : DlepTestParser, 'SNMP' : SnmpTestParser}
+        self.current_parser = None
         self.dict_of_basic_commands = {'TYPE:' : self.set_test_type, \
                                     'NAME:' : self.set_test_name, \
                                     'TEST:' : self.start_reading_test}
         self.dict_of_test_type = {'DLEP' : self.create_dlep_test, \
                                 'SNMP' : self.create_snmp_test}
-        self.dict_of_dlep_commands = {'SIGNAL' : self.set_signal, 'TO_INCLUDE' : self.set_to_include, 'TO_NOT_INCLUDE' : self.set_to_not_include}
-        self.dict_of_snmp_commands = {'OID' : self.set_oid, 'TO_BE' : self.set_to_be, 'OF_TYPE' : self.set_mib_type, 'WITH_VALUE' : self.set_mib_value}
+        
+        
         self.dict_of_states = {'TYPE' : False, 'NAME' : False, 'TEST' : False}
         self.current_dict_of_commands = self.dict_of_basic_commands
         self.current_test_type = ''
@@ -90,15 +99,12 @@ class TestsParser:
                     word_list = [word for word in word_list if word != '']
                 except:
                     pass
-                self.logger.debug(word_list)
                 # while there is at least 1 word in line
                 while len(word_list) and word_list[0] != '':  
                     # this function can raise an exception
-                    self.logger.debug(word_list)
                     self.cut_and_parse_into_variables(test_file, word_list)
                 if test_file.check_if_current_test_ready():
                     # add the current test into list of tests
-                    self.logger.info(line)
                     test_file.add_test()
                     # reset the dictionary of states for the next tests
                     self.reset_dict_of_states()
@@ -116,9 +122,10 @@ class TestsParser:
             self.logger.error('file {} cannot be parsed. error message -> {}'.format(file, e.get_message()))
             self.reset_dict_of_states()
 
-    
     def cut_and_parse_into_variables(self, test_file, word_list):
         if word_list[0] in self.current_dict_of_commands:
+            self.call_fuction_by_list(test_file, word_list)
+        elif word_list[0] in self.current_parser.dict_of_parser_commands:
             self.call_fuction_by_list(test_file, word_list)
         elif word_list[0] == 'TYPE:':
             # in case we started a new test
@@ -130,17 +137,10 @@ class TestsParser:
     def call_fuction_by_list(self, test_file, word_list):
         function_to_call = word_list[0]
         # the first word's cutting happens here, word_list[1:]
-        #word_list[:] = word_list[1:]
         self.cut_next_words(word_list, 1)
         # call to function by the given key-word 
-        self.current_dict_of_commands[function_to_call](test_file, word_list)
-
-    def cut_next_words(self, word_list, num_of_words):
-        after_cutting = word_list[num_of_words:]
-        if after_cutting == ['']:
-            word_list[:] = []
-        else:
-            word_list[:] = after_cutting
+        if self.current_parser is None:
+            self.current_dict_of_commands[function_to_call](test_file, word_list)
 
     # returns a dict of files which succeeded the parsing as {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}
     def get_test_files_after_parsing(self):
@@ -170,15 +170,13 @@ class TestsParser:
     def set_test_type(self, test_file, word_list):
         # redirect the list of commands to read from dictionary of test type
         self.dict_of_states['TYPE'] = True
-        self.current_dict_of_commands = self.dict_of_test_type
+        self.current_parser = self.dict_of_parsers[word_list[0]]
+        cut_next_words(word_list, 1)
+        self.current_dict_of_commands = self.current_parser.dict_of_parser_commands()
         # there is not another cutting here, the next time cut_and_parse_into_variables will be called
-        # it will call to the right function from the self.dict_of_test_type
+        # it will call to the right function from the parser.sict_of_parser_commands
 
-    # create dlep test as type says 'DLEP'
-    def create_dlep_test(self, test_file, word_list):
-        test_file.create_dlep_test(word_list)
-        self.current_dict_of_commands = self.dict_of_basic_commands
-        self.current_test_type = 'DLEP'
+    
 
     # create snmp test as type says 'SNMP'
     def create_snmp_test(self, test_file, word_list):
@@ -203,54 +201,72 @@ class TestsParser:
         elif self.current_test_type == 'SNMP':
             self.current_dict_of_commands = self.dict_of_snmp_commands
 
-    ############################
-    # dlep commands' functions #
-    ############################
 
-    def set_signal(self, test_file, word_list):
+class DlepTestParser:
+    # create dlep test as type says 'DLEP'
+    @staticmethod
+    def create_dlep_test(test_file, word_list):
+        test_file.create_dlep_test(word_list)
+        current_dict_of_commands = dict_of_basic_commands
+        current_test_type = 'DLEP'
+
+    # returns the number of words which should be cut before the next calling function
+    @staticmethod
+    def set_signal(test_file, word_list):
         # next string should be signal
         test_file.set_signal(word_list[0])
         # cut the used signal which was already saved
-        self.cut_next_words(word_list, 1)
+        return 1
 
-    def set_to_include(self, test_file, word_list):
+    # returns the number of words which should be cut before the next calling function
+    @staticmethod
+    def set_to_include(test_file, word_list):
         # set test to include, than what to include? (next string should be DATA_ITEM or SUB_DATA_ITEM and then the item itself)
         test_file.set_include('To include', word_list[1])
         # cut the used item which was already saved
-        self.cut_next_words(word_list, 2)
+        return 2
 
+    # returns the number of words which should be cut before the next calling function
+    @staticmethod
     def set_to_not_include(self, test_file, word_list):
         # set test to not include, than what to include? (next string should be DATA_ITEM or SUB_DATA_ITEM and then the item itself)
         test_file.set_include('To not include', word_list[1])
         # cut the used item which was already saved
-        self.cut_next_words(word_list, 2)
+        return 2
 
-    ############################
-    # snmp commands' functions #
-    ############################
+    # static variables:
+    dict_of_parser_commands = {'SIGNAL' : set_signal, 'TO_INCLUDE' : set_to_include, 'TO_NOT_INCLUDE' : set_to_not_include}
 
+
+class SnmpTestParser:
+    # returns the number of words which should be cut before the next calling function
+    @staticmethod
     def set_oid(self, test_file, word_list):
         # next string should be oid
         test_file.set_oid(word_list[0])
         # cut the used oid which was already saved
-        self.cut_next_words(word_list, 1)
+        cut_next_words(word_list, 1)
 
+    @staticmethod
     def set_to_be(self, test_file, word_list):
         # next string should be READONLY/SETTABLE
         test_file.set_to_be(word_list[0])
         # cut the used READONLY/SETTABLE which was already saved
-        self.cut_next_words(word_list, 1)
+        cut_next_words(word_list, 1)
 
+    @staticmethod
     def set_mib_type(self, test_file, word_list):
         # next string should be INTEGER/OCTET_STRING
         test_file.set_mib_type(word_list[0])
         # cut the used INTEGER/OCTET_STRING which was already saved
-        self.cut_next_words(word_list, 1)
+        cut_next_words(word_list, 1)
 
+    @staticmethod
     def set_mib_value(self, test_file, word_list):
         # next string should be the value we're suppose to expect
         test_file.set_mib_value(word_list[0])
         # cut the used value which was already saved
-        self.cut_next_words(word_list, 1)
+        cut_next_words(word_list, 1)
 
-
+    # static variables:
+    dict_of_parser_commands = {'OID' : set_oid, 'TO_BE' : set_to_be, 'OF_TYPE' : set_mib_type, 'WITH_VALUE' : set_mib_value}
