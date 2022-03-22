@@ -3,6 +3,7 @@
 # for easy read/write on mongodb
 from mongodb_handler import MongodbHandler
 
+'''
 class TestFile:
     def __init__(self, file_name):
         self.dlep_tests = []
@@ -91,7 +92,15 @@ class TestFile:
 
     def exec_all_tests(self):
         pass
+'''
 
+class TestFile:
+    def __init__(self, file_name):
+        self.dlep_tests = []
+        self.snmp_tests = []
+        self.tests = []
+        self.file_name = file_name
+        self.current_test = None
 
 class Test:
     def __init__(self, test_word_list, type):
@@ -122,7 +131,6 @@ class DlepTest(Test):
         # whether to include or to not include, what item?
         self.data_item = ''
         self.sub_data_item = ''
-        self.full_test = ''
 
     def set_signal(self, signal):
         self.signal = signal
@@ -158,7 +166,6 @@ class DlepTest(Test):
     def exec_test(self):
         pass
     
-
 
 class SnmpTest(Test):
     def __init__(self, test_word_list, type):
