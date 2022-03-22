@@ -2,6 +2,7 @@
 
 # for easy read/write on mongodb
 from mongodb_handler import MongodbHandler
+from test_parser import DlepTestParser, SnmpTestParser
 
 '''
 class TestFile:
@@ -96,11 +97,17 @@ class TestFile:
 
 class TestFile:
     def __init__(self, file_name):
-        self.dlep_tests = []
-        self.snmp_tests = []
+        self.test_types = {'DLEP' : DlepTest, 'SNMP' : SnmpTest}
+        self.test_parser_types = {'DLEP' : DlepTestParser, 'SNMP' : SnmpTestParser}
         self.tests = []
         self.file_name = file_name
         self.current_test = None
+        self.current_parser = None
+
+    def create_test(self, test_word_list, test_type):
+        self.test_parser_types[test_type]
+        self.current_test = self.test_types[test_type](test_word_list, test_type)
+        
 
 class Test:
     def __init__(self, test_word_list, type):
@@ -109,6 +116,10 @@ class Test:
         self.name = ''
         # agent suppose to be responsible for parsing and execute the test
         self.agent = None
+
+    # the meaning of the next function is when creating new type of test (@DlepTest, @SnmpTest, etc...) this function has to be override
+    def check_if_test_ready(self):
+        raise NotImplementedError()
 
     def get_type(self):
         return self.type
