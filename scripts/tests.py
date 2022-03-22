@@ -105,17 +105,22 @@ class TestFile:
         self.current_parser = None
 
     def create_test(self, test_word_list, test_type):
-        self.test_parser_types[test_type]
-        self.current_test = self.test_types[test_type](test_word_list, test_type)
-        
+        self.current_test = self.test_types[test_type](test_word_list, test_type, self.test_parser_types[test_type])
+
+    def check_if_current_test_ready(self):
+        return self.current_test.check_if_test_ready()
+
+    def add_test(self):
+        self.tests.append(self.current_test)
+
 
 class Test:
-    def __init__(self, test_word_list, type):
+    def __init__(self, test_word_list, type, parser_agent):
         self.test_word_list = test_word_list
         self.type = type
         self.name = ''
         # agent suppose to be responsible for parsing and execute the test
-        self.agent = None
+        self.parser_agent = parser_agent
 
     # the meaning of the next function is when creating new type of test (@DlepTest, @SnmpTest, etc...) this function has to be override
     def check_if_test_ready(self):
