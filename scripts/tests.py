@@ -1,6 +1,7 @@
 # this file will include- TestFile, DlepTest, SnmpTest
 
 # for easy read/write on mongodb
+from typing import Any
 from mongodb_handler import MongodbHandler
 from test_parser import DlepTestParser, SnmpTestParser
 from abc import ABC, abstractmethod
@@ -96,42 +97,24 @@ class TestFile:
         pass
 '''
 
-class TestFile:
-    def __init__(self, file_name):
-        self.test_types = {'DLEP' : DlepTest, 'SNMP' : SnmpTest}
-        self.test_parser_types = {'DLEP' : DlepTestParser, 'SNMP' : SnmpTestParser}
-        self.tests = []
-        self.file_name = file_name
-        self.current_test = None
-        self.current_parser = None
-
-    def create_test(self, test_word_list, test_type):
-        self.current_test = self.test_types[test_type](test_word_list, test_type, self.test_parser_types[test_type])
-
-    def check_if_current_test_ready(self):
-        return self.current_test.check_if_test_ready()
-
-    def add_test(self):
-        self.tests.append(self.current_test)
-
 
 class Test(ABC):
     @abstractmethod
-    def __init__(self, test_word_list, type, parser_agent):
-        self.test_word_list = test_word_list
+    def __init__(self, type: str):
         self.type = type
         self.name = ''
-        # agent suppose to be responsible for parsing and execute the test
-        self.parser_agent = parser_agent
 
     # the meaning of the next function is when creating new type of test (@DlepTest, @SnmpTest, etc...) this function has to be override
     @abstractmethod
     def check_if_test_ready(self):
         raise NotImplementedError()
 
+    def get_type(self) -> str:
+        return self.type
+
 class DlepTest(Test):
-    def __init__(self, test_word_list, type):
-        super().__init__(test_word_list, type)
+    def __init__(self, type: str):
+        super().__init__(type)
         self.signal = ''
         self.is_signal_need_to_include = ''
         self.is_data_item_need_to_include = ''
@@ -139,10 +122,10 @@ class DlepTest(Test):
         self.data_item = ''
         self.sub_data_item = ''
 
-    def set_signal(self, signal):
+    def set_signal(self, signal: str):
         self.signal = signal
 
-    def set_include(self, is_need_to_include, item_to_include):
+    def set_include(self, is_need_to_include: str, item_to_include: str):
         if self.is_signal_need_to_include == '':
             self.is_signal_need_to_include = is_need_to_include
             self.data_item = item_to_include
@@ -150,7 +133,7 @@ class DlepTest(Test):
             self.is_data_item_need_to_include = is_need_to_include
             self.sub_data_item = item_to_include
 
-    def test_to_json(self):
+    def test_to_json(self) -> dict[str, Any]:
         json_test = {}
         json_test['Type'] = self.type
         json_test['Name'] = self.name
@@ -160,10 +143,10 @@ class DlepTest(Test):
             json_test['Test'][self.is_signal_need_to_include][self.is_data_item_need_to_include] = {'Sub Data Item' : self.sub_data_item}
         return json_test
 
-    def get_test(self):
+    def get_test(self) -> dict[str, Any]:
         return self.test_to_json()
     
-    def check_if_test_ready(self):
+    def check_if_test_ready(self) -> bool:
         if self.name != '' and self.signal != '' and self.is_signal_need_to_include != '' and self.data_item != '':
             if self.is_data_item_need_to_include != '' and self.sub_data_item == '':
                 return False
@@ -175,8 +158,8 @@ class DlepTest(Test):
     
 
 class SnmpTest(Test):
-    def __init__(self, test_word_list, type):
-        super().__init__(test_word_list, type)
+    def __init__(self, type: str):
+        super().__init__(type)
         self.oid = ''
         # command can be READONLY/SETTABLE (get/set)
         self.command = ''
@@ -184,22 +167,22 @@ class SnmpTest(Test):
         self.mib_value = ''
         self.full_test = ''
 
-    def set_oid(self, oid):
+    def set_oid(self, oid: str):
         self.oid = oid
 
-    def set_command(self, command):
+    def set_command(self, command: str):
         if command == 'READONLY':
             self.command = 'get'
         elif command == 'SETTABLE':
             self.command = 'set'
 
-    def set_mib_type(self, mib_type):
+    def set_mib_type(self, mib_type: str):
         self.mib_type = mib_type
 
-    def set_mib_value(self, mib_value):
+    def set_mib_value(self, mib_value: str):
         self.mib_value = mib_value
 
-    def test_to_json(self):
+    def test_to_json(self) -> dict[str, Any]:
         json_test = {}
         json_test['Type'] = self.type
         json_test['Name'] = self.name
@@ -208,13 +191,28 @@ class SnmpTest(Test):
             json_test['Test']['Mib value'] = self.mib_value
         return json_test
 
-    def get_test(self):
+    def get_test(self) -> dict[str, Any]:
         return self.test_to_json()
 
-    def check_if_test_ready(self):
+    def check_if_test_ready(self) -> bool:
         if self.name != '' and self.oid != '' and self.command != '' and self.mib_type != '':
             return True
         return False
 
     def exec_test(self):
         pass
+
+class TestFile:
+    def __init__(self, file_name: str):
+        self.test_types = {'DLEP' : DlepTest, 'SNMP' : SnmpTest}
+        self.tests = []
+        self.file_name = file_name
+
+    def create_test(self, test_type: str) -> tuple[bool, Test]:
+        if test_type not in self.test_types:
+            return False, None 
+        # example for the next line is DlepTest(type, DlepTestParser)
+        return True, self.test_types[test_type](test_type)
+
+    def add_test(self, test: Test):
+        self.tests.append(test)

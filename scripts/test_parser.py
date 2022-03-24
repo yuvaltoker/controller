@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from tests import TestFile
+from tests import TestFile, Test
 import logging
 
 # define Python user-defined exceptions
@@ -45,6 +45,7 @@ def cut_next_words(self, word_list, num_of_words):
 
 class TestFilesParser:
     def __init__(self, logging_level, logging_file = None): 
+        self.test_parser_types = {'DLEP' : DlepTestParser, 'SNMP' : SnmpTestParser}
         self.test_files = []
         # logging
         logger = logging.getLogger('test_parser')
@@ -52,42 +53,42 @@ class TestFilesParser:
         self.logger = logger
         self.test_lines_length = 3
 
-    def file_to_lines(self, file):
+    def file_to_lines(self, file: str) -> list[str]:
         with open(file, 'r') as file:
             file_lines = file.readlines()
             file_lines = [line.rstrip() for line in file_lines]
         return file_lines
 
-    def reset_dict_of_states(self):
-        self.dict_of_states['TYPE'] = False
-        self.dict_of_states['NAME'] = False
-        self.dict_of_states['TEST'] = False
-
-    def parse_files(self, files):
+    def parse_files(self, files: list[str]):
         for file in files:
             self.parse_file(file)
-            self.reset_dict_of_states()
 
-    def parse_test(self, test_file, current_test_lines):
-        # while there is at least 1 word in line
-        while len(current_test_lines) and current_test_lines[0] != '':  
-            # this function can raise an exception
-            self.cut_and_parse_into_variables(test_file, current_test_lines)
-            # parse
-            #
-            # end parse
-            if test_file.check_if_current_test_ready():
-                # add the current test into list of tests
-                test_file.add_test()
-                
-
-    def parse_file(self, file):
+    def parse_test(self, test_file: TestFile, current_test_lines: list[list[str]]):
+        '''parse test by given lines, in case of success, add the test into test_file's list of tests'''
+        line = current_test_lines[0]
+        if line[0] != 'TYPE:':
+            raise CannotBeParsedError('expected TYPE command, instead got  {}'.format(' '.join(line[0])))
+        # expect type
+        type = line[1]
+        # @create_test function in @TestFile returns a tuple[bool, Test]
+        has_created, test = test_file.create_test(type)
+        if not has_created:
+            raise CannotBeParsedError('TYPE value {} not found'.format(' '.join(type)))
+        # test parser should get @Test and list of lines (list[list[str]]) containing 2 lines, the 2nd and 3rd lines
+        parser = self.test_parser_types[type](test, current_test_lines[:1])
+        test = parser.parse_test()
+        if test.check_if_test_ready():
+            # add the current test into list of tests
+            test_file.add_test(test)
+        
+    def parse_file(self, file: str):
+        '''parse file, in case of success, add the file into self.test_files'''
         file_lines = self.file_to_lines(file)
         test_file = TestFile(file)
         try:
             # when lines_counter reach 3, it mean we have a whole test ready to be read
             current_test_lines = []
-            for index,line in enumerate(file_lines):
+            for line in file_lines:
                 if line == '':
                     continue
                 word_list = line.split(' ')
@@ -100,74 +101,14 @@ class TestFilesParser:
                 # when we reach the possibility of Type, Name and Test, it means we're ready to read
                 if len(current_test_lines) == self.test_lines_length:
                     self.parse_test(test_file, current_test_lines)
-                    
-            '''
-            for line in file_lines:
-                # ignores empty lines
-                if line == '':
-                    continue
-                word_list = line.split(' ')
-                # removing all the '' in the list, it'll raise an exception when '' will not be exist anymore
-                try:
-                    word_list = [word for word in word_list if word != '']
-                except:
-                    pass
-                # while there is at least 1 word in line
-                while len(word_list) and word_list[0] != '':  
-                    # this function can raise an exception
-                    self.cut_and_parse_into_variables(test_file, word_list)
-                if test_file.check_if_current_test_ready():
-                    # add the current test into list of tests
-                    test_file.add_test()
-                    # reset the dictionary of states for the next tests
-                    self.reset_dict_of_states()
-                # if we've already read the TEST line, but the test is not ready, it means the test failed to be parsed, thus we don't want the file
-                elif self.dict_of_states['TEST'] is True:
-                    raise CannotBeParsedError('could not parse one of {} tests'.format(test_file.get_file_name()))
-                    
-            if test_file.has_dlep_tests() or test_file.has_snmp_tests():
-                self.test_files.append(test_file)
-                tests_jsons = test_file.get_tests_jsons()
-                self.logger.info('File {} tests:'.format(test_file.get_file_name()))
-                for test_json in tests_jsons:
-                    self.logger.info(test_json)
-            '''
+                    # removing all junk from before in any case, for the next test to come out
+                    current_test_lines[:] = []
+            # a succesful tdf file should not have spare lines
+            if current_test_lines != []:
+                raise CannotBeParsedError('tdf file got spare line/s')
         except CannotBeParsedError as e:
             self.logger.error('file {} cannot be parsed. error message -> {}'.format(file, e.get_message()))
-            self.reset_dict_of_states()
-
-    def cut_and_parse_into_variables(self, test_file, word_list):
-        if word_list[0] in self.current_dict_of_commands:
-            self.call_fuction_by_list(test_file, word_list)
-        elif word_list[0] in self.current_parser.dict_of_parser_commands:
-            self.call_fuction_by_list(test_file, word_list)
-        elif word_list[0] == 'TYPE:':
-            # in case we started a new test
-            self.current_dict_of_commands = self.dict_of_basic_commands
-            self.call_fuction_by_list(test_file, word_list)
-        else:
-            raise CannotBeParsedError('cannot find a command for -> {}'.format(' '.join(word_list[0])))
-
-    def call_fuction_by_dict(self, test_file, word_list):
-        function_to_call = word_list[0]
-        # the first word's cutting happens here, word_list[1:]
-        cut_next_words(word_list, 1)
-        # call to function by the given key-word 
-        self.current_dict_of_commands[function_to_call](test_file, word_list)
-
-
-
-    #############################
-    # basic commands' functions #
-    #############################
-    
-    # after calling 'TYPE:'
-    def set_test_type(self, test_file, word_list):
-        # redirect the list of commands to read from dictionary of test type
-        self.dict_of_states['TYPE'] = True
-        self.current_parser = self.dict_of_parsers[word_list[0]]
-        cut_next_words(word_list, 1)
-        self.current_dict_of_commands = self.current_parser.dict_of_parser_commands
+        self.test_files.append(test_file)
 
 
 class TestParser(ABC):
