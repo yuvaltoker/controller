@@ -3,6 +3,7 @@
 # for easy read/write on mongodb
 from mongodb_handler import MongodbHandler
 from test_parser import DlepTestParser, SnmpTestParser
+from abc import ABC, abstractmethod
 
 '''
 class TestFile:
@@ -114,7 +115,8 @@ class TestFile:
         self.tests.append(self.current_test)
 
 
-class Test:
+class Test(ABC):
+    @abstractmethod
     def __init__(self, test_word_list, type, parser_agent):
         self.test_word_list = test_word_list
         self.type = type
@@ -123,20 +125,9 @@ class Test:
         self.parser_agent = parser_agent
 
     # the meaning of the next function is when creating new type of test (@DlepTest, @SnmpTest, etc...) this function has to be override
+    @abstractmethod
     def check_if_test_ready(self):
         raise NotImplementedError()
-
-    def get_type(self):
-        return self.type
-
-    def get_name(self):
-        return self.type
-
-    def set_type(self, type):
-        self.type = type 
-
-    def set_name(self, name):
-        self.name = name 
 
 class DlepTest(Test):
     def __init__(self, test_word_list, type):

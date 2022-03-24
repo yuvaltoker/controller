@@ -60,7 +60,7 @@ class RabbitmqHandler:
                 self.channel.basic_consume(queue=self.callback_queue_pdfs, on_message_callback=self.on_response_pdf, auto_ack=True)
 
 
-        # testing logging
+        # logging
         logger = logging.getLogger('rmq')
         configure_logger_logging(logger, logging_level, logging_file)
         self.logger = logger

@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from tests import TestFile
 import logging
 
@@ -78,6 +79,7 @@ class TestFilesParser:
             if test_file.check_if_current_test_ready():
                 # add the current test into list of tests
                 test_file.add_test()
+                
 
     def parse_file(self, file):
         file_lines = self.file_to_lines(file)
@@ -168,7 +170,8 @@ class TestFilesParser:
         self.current_dict_of_commands = self.current_parser.dict_of_parser_commands
 
 
-class TestParser:
+class TestParser(ABC):
+    @abstractmethod
     def __init__(self):
         self.dict_of_basic_commands = {'TYPE:' : self.set_test_type, \
                                     'NAME:' : self.set_test_name, \
