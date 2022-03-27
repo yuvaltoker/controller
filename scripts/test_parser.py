@@ -1,21 +1,16 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from enum import Enum, auto
 from tests import TestFile, Test
 import logging
 
-# define Python user-defined exceptions
-class Error(Exception):
-    """Base class for other exceptions"""
-    pass
-
-class CannotBeParsedError(Error):
-    def __init__(self, message):
+class CannotBeParsedError(Exception):
+    """Custom error which raised when a test/file cannot be parsed"""
+    def __init__(self, message: str) -> None:
         self.message = message
-        super(CannotBeParsedError, self).__init__(message)
+        super.__init__(message)
 
-    def get_message(self):
-        return self.message
-
-def configure_logger_logging(logger, logging_level, logging_file):
+def configure_logger_logging(logger, logging_level, logging_file) -> None:
         logger.setLevel(logging_level)
         # create formatter and add it to the handlers
         formatter = logging.Formatter(
@@ -36,7 +31,7 @@ def configure_logger_logging(logger, logging_level, logging_file):
         # add the handlers to logger
         logger.addHandler(console_handler)
 
-def cut_next_words(self, word_list, num_of_words):
+def cut_next_words(self, word_list, num_of_words) -> None:
         after_cutting = word_list[num_of_words:]
         if after_cutting == ['']:
             word_list[:] = []
@@ -44,7 +39,7 @@ def cut_next_words(self, word_list, num_of_words):
             word_list[:] = after_cutting
 
 class TestFilesParser:
-    def __init__(self, logging_level, logging_file = None): 
+    def __init__(self, logging_level, logging_file = None) -> None: 
         self.test_parser_types = {'DLEP' : DlepTestParser, 'SNMP' : SnmpTestParser}
         self.test_files = []
         # logging
@@ -59,11 +54,11 @@ class TestFilesParser:
             file_lines = [line.rstrip() for line in file_lines]
         return file_lines
 
-    def parse_files(self, files: list[str]):
+    def parse_files(self, files: list[str]) -> None:
         for file in files:
             self.parse_file(file)
 
-    def parse_test(self, test_file: TestFile, current_test_lines: list[list[str]]):
+    def parse_test(self, test_file: TestFile, current_test_lines: list[list[str]]) -> None:
         '''parse test by given lines, in case of success, add the test into test_file's list of tests'''
         line = current_test_lines[0]
         if line[0] != 'TYPE:':
@@ -76,12 +71,14 @@ class TestFilesParser:
             raise CannotBeParsedError('TYPE value {} not found'.format(' '.join(type)))
         # test parser should get @Test and list of lines (list[list[str]]) containing 2 lines, the 2nd and 3rd lines
         parser = self.test_parser_types[type](test, current_test_lines[:1])
+        # parsing the test
         test = parser.parse_test()
+        # checking successful parsing, in case of failure an exception will be raised
         if test.check_if_test_ready():
             # add the current test into list of tests
             test_file.add_test(test)
         
-    def parse_file(self, file: str):
+    def parse_file(self, file: str) -> None:
         '''parse file, in case of success, add the file into self.test_files'''
         file_lines = self.file_to_lines(file)
         test_file = TestFile(file)
@@ -110,15 +107,21 @@ class TestFilesParser:
             self.logger.error('file {} cannot be parsed. error message -> {}'.format(file, e.get_message()))
         self.test_files.append(test_file)
 
+@dataclass
+class ParsingTestStates(Enum):
+    """Represents the state of test parsing"""
+    STAGE_TYPE = auto()
+    STAGE_NAME = auto()
+    STAGE_TEST = auto()
+
 
 class TestParser(ABC):
     @abstractmethod
-    def __init__(self):
+    def __init__(self) -> None:
         self.dict_of_basic_commands = {'TYPE:' : self.set_test_type, \
                                     'NAME:' : self.set_test_name, \
                                     'TEST:' : self.start_reading_test}
-
-        self.dict_of_states = {'TYPE' : False, 'NAME' : False, 'TEST' : False}
+        self.current_parsing_state = ParsingTestStates.STAGE_TYPE
         self.current_dict_of_commands = self.dict_of_basic_commands
 
 '''
