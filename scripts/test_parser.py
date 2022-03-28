@@ -40,7 +40,9 @@ def cut_next_words(self, word_list, num_of_words) -> None:
 
 class TestFilesParser:
     def __init__(self, logging_level, logging_file = None) -> None: 
-        self.test_parser_types = {'DLEP' : DlepTestParser, 'SNMP' : SnmpTestParser}
+        dlep_test_parser = DlepTestParser()
+        snmp_test_parser = SnmpTestParser()
+        self.test_parser_types = {'DLEP' : dlep_test_parser, 'SNMP' : snmp_test_parser}
         self.test_files = []
         # logging
         logger = logging.getLogger('test_parser')
@@ -123,6 +125,11 @@ class TestParser(ABC):
                                     'TEST:' : self.start_reading_test}
         self.current_parsing_state = ParsingTestStates.STAGE_TYPE
         self.current_dict_of_commands = self.dict_of_basic_commands
+
+class DlepTestParser(TestParser):
+    def __init__(self) -> None:
+        super().__init__()
+        dict_of_dlep_commands = {'SIGNAL' : set_signal, 'TO_INCLUDE' : set_to_include, 'TO_NOT_INCLUDE' : set_to_not_include}
 
 '''
 class TestFilesParser:
