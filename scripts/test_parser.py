@@ -40,9 +40,13 @@ def cut_next_words(self, word_list, num_of_words) -> None:
 
 class TestFilesParser:
     def __init__(self, logging_level, logging_file = None) -> None: 
-        dlep_test_parser = DlepTestParser()
-        snmp_test_parser = SnmpTestParser()
-        self.test_parser_types = {'DLEP' : dlep_test_parser, 'SNMP' : snmp_test_parser}
+        # when adding new type of TestParser's child, add the class' name here
+        self.list_test_parser_types = {DlepTestParser, SnmpTestParser}
+        # here will be saved dict of [str(keyword), TestParser(child)], for example {'DLEP', DlepTestParser}
+        self.dict_test_parsers = {}
+        # fill the above dict, by calling the init func the test_parser child class will register itself to the dict
+        for parser_class in self.list_test_parser_types:
+            parser_class(parsers_dict=self.dict_test_parsers)
         self.test_files = []
         # logging
         logger = logging.getLogger('test_parser')
@@ -68,13 +72,17 @@ class TestFilesParser:
         # expect type
         type = line[1]
         # @create_test function in @TestFile returns a tuple[bool, Test]
-        has_created, test = test_file.create_test(type)
+        has_created, test = test_file.create_test(test_type=type)
         if not has_created:
-            raise CannotBeParsedError('TYPE value {} not found'.format(' '.join(type)))
+            raise CannotBeParsedError('TYPE value {} not found in tests type'.format(' '.join(type)))
+        # if type is not in self.dict_test_parser
+        if not type in self.dict_test_parsers:
+            raise CannotBeParsedError('TYPE value {} not found in test parser dict'.format(' '.join(type)))
+        current_test_lines[:] = current_test_lines[:1]
         # test parser should get @Test and list of lines (list[list[str]]) containing 2 lines, the 2nd and 3rd lines
-        parser = self.test_parser_types[type](test, current_test_lines[:1])
+        parser = self.dict_test_parsers[type](test, current_test_lines)
         # parsing the test
-        test = parser.parse_test()
+        test = parser.parse_test(test=test, lines_to_parse=current_test_lines)
         # checking successful parsing, in case of failure an exception will be raised
         if test.check_if_test_ready():
             # add the current test into list of tests
@@ -119,17 +127,40 @@ class ParsingTestStates(Enum):
 
 class TestParser(ABC):
     @abstractmethod
-    def __init__(self) -> None:
-        self.dict_of_basic_commands = {'TYPE:' : self.set_test_type, \
-                                    'NAME:' : self.set_test_name, \
-                                    'TEST:' : self.start_reading_test}
+    def __init__(self, my_keyword_type: str) -> None:
+        self.my_keyword_type = my_keyword_type
+        self.dict_of_basic_commands = {'NAME:' : self.set_test_name, \
+            'TEST:' : self.start_reading_test}
         self.current_parsing_state = ParsingTestStates.STAGE_TYPE
         self.current_dict_of_commands = self.dict_of_basic_commands
 
+    @abstractmethod
+    def parse_test(self, test: Test, lines_to_parse: list[list[str]]) -> None:
+        raise NotImplementedError()
+
 class DlepTestParser(TestParser):
-    def __init__(self) -> None:
-        super().__init__()
-        dict_of_dlep_commands = {'SIGNAL' : set_signal, 'TO_INCLUDE' : set_to_include, 'TO_NOT_INCLUDE' : set_to_not_include}
+    def __init__(self, parsers_dict : dict[str, TestParser]) -> None:
+        super().__init__('DLEP')
+        parsers_dict[self.my_keyword_type] = self
+        self.dict_of_dlep_commands = {'SIGNAL' : self.set_signal, \
+            'TO_INCLUDE' : self.set_to_include, \
+            'TO_NOT_INCLUDE' : self.set_to_not_include}
+
+    def parse_test(self, test: Test, lines_to_parse: list[list[str]]) -> Test:
+        pass
+
+
+class SnmpTestParser(TestParser):
+    def __init__(self, parsers_dict : dict[str, TestParser]) -> None:
+        super().__init__('SNMP')
+        parsers_dict[self.my_keyword_type] = self
+        self.dict_of_parser_commands = {'OID' : self.set_oid, \
+            'TO_BE' : self.set_to_be, \
+            'OF_TYPE' : self.set_mib_type, \
+            'WITH_VALUE' : self.set_mib_value}
+
+    def parse_test(self, test: Test, lines_to_parse: list[list[str]]) -> Test:
+        pass
 
 '''
 class TestFilesParser:
