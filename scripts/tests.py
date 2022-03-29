@@ -42,13 +42,13 @@ class DlepTest(Test):
     def set_signal(self, signal: str) -> None:
         self.signal = signal
 
-    def set_include(self, is_need_to_include: str, item_to_include: str) -> None:
+    def set_include(self, is_need_to_include: str, item: str) -> None:
         if self.is_signal_need_to_include == '':
             self.is_signal_need_to_include = is_need_to_include
-            self.data_item = item_to_include
+            self.data_item = item
         else:
             self.is_data_item_need_to_include = is_need_to_include
-            self.sub_data_item = item_to_include
+            self.sub_data_item = item
 
     def test_to_json(self) -> dict[str, Any]:
         json_test = {}

@@ -137,8 +137,9 @@ class TestParser(ABC):
         #self.current_dict_of_commands = self.dict_of_basic_commands
 
     def parse_basic_keywords(self, test: Test, line: list[str]) -> None:
-        if line[0] not in self.dict_of_basic_commands:
-            raise CannotBeParsedError('keyword {} not found ')
+        if not self.is_keyword_in_dict(dict=self.dict_of_basic_commands,
+            keyword=line[0]):
+            raise CannotBeParsedError('keyword {} not found '.format(''.join(line[0])))  
         # select the right keyword for the first word in line, then pass the rest of the line to function
         self.dict_of_basic_commands[line[0]](line[:1])
 
@@ -159,6 +160,9 @@ class TestParser(ABC):
     def parse_my_own_keywords(self, test: Test, lines_to_parse: list[str]) -> None:
         raise NotImplementedError()
         
+    def is_keyword_in_dict(self, dict: dict[str, Any], keyword: str) -> bool:
+        return keyword in dict
+
     def cut_next_words(self, word_list, num_of_words) -> None:
         after_cutting = word_list[num_of_words:]
         if after_cutting == ['']:
@@ -171,24 +175,48 @@ class DlepTestParser(TestParser):
     def __init__(self, parsers_dict : dict[str, TestParser]) -> None:
         super().__init__('DLEP')
         parsers_dict[self.my_keyword_type] = self
-        self.dict_of_parser_commands = {'SIGNAL' : self.set_signal, \
-            'TO_INCLUDE' : self.set_to_include, \
+        # the next functions in dictionary must get 2 variables; test - Test, and rest of line - list[str]
+        self.dict_of_parser_commands = {'SIGNAL' : self.set_signal,
+            'TO_INCLUDE' : self.set_to_include,
             'TO_NOT_INCLUDE' : self.set_to_not_include}
 
-    def parse_my_own_keywords(self, test: Test, line: list[str]) -> Test:
-        pass
+    def parse_my_own_keywords(self, test: Test, line: list[str]) -> None:
+        while len(line):
+            if self.is_keyword_in_dict(dict=self.dict_of_parser_commands,
+                keyword=line[0]):
+                raise CannotBeParsedError('keyword {} not found '.format(''.join(line[0])))
+            # select the right keyword for the first word in line, then pass the rest of the line to function
+            self.dict_of_parser_commands[line[0]](test=test,
+                line=line)
 
+    def set_signal(self, test, line: list[str]) -> None:
+        # first word in list contains the 'SIGNAL' keyword, then the signal itself
+        test.set_signal(signal=line[1])
+        # removing the 'SIGNAL' keyword and the signal itself
+        self.cut_next_words(word_list=line, num_of_words=2)
+
+    def set_to_include(self, test, line: list[str]) -> None:
+        # first word in list contains the 'TO_INCLUDE' keyword, then the item to include
+        test.set_include(is_need_to_include='include', item=line[1])
+        # removing the 'TO_INCLUDE' keyword and the item that need to be include
+        self.cut_next_words(word_list=line, num_of_words=2)
+
+    def set_to_not_include(self, test, line: list[str]) -> None:
+        # first word in list contains the 'TO_NOT_INCLUDE' keyword, then the item to include
+        test.set_include(is_need_to_include='not include', item=line[1])
+        # removing the 'TO_NOT_INCLUDE' keyword and the item that need to not be include
+        self.cut_next_words(word_list=line, num_of_words=2)
 
 class SnmpTestParser(TestParser):
     def __init__(self, parsers_dict : dict[str, TestParser]) -> None:
         super().__init__('SNMP')
         parsers_dict[self.my_keyword_type] = self
-        self.dict_of_parser_commands = {'OID' : self.set_oid, \
-            'TO_BE' : self.set_to_be, \
-            'OF_TYPE' : self.set_mib_type, \
+        self.dict_of_parser_commands = {'OID' : self.set_oid,
+            'TO_BE' : self.set_to_be,
+            'OF_TYPE' : self.set_mib_type,
             'WITH_VALUE' : self.set_mib_value}
 
-    def parse_my_own_keywords(self, test: Test, line: list[str]) -> Test:
+    def parse_my_own_keywords(self, test: Test, line: list[str]) -> None:
         pass
 
 '''
