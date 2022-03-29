@@ -8,10 +8,10 @@ from abc import ABC, abstractmethod
 
 
 class Test(ABC):
+    name: str
     @abstractmethod
     def __init__(self, type: str) -> None:
         self.type = type
-        self.name = ''
 
     # the meaning of the next function is when creating new type of test (@DlepTest, @SnmpTest, etc...) this function has to be override
     @abstractmethod
@@ -21,6 +21,9 @@ class Test(ABC):
 
     def get_type(self) -> str:
         return self.type
+
+    def set_name(self, name: str) -> None:
+        self.name = name
 
     @abstractmethod
     def exec_test(self) -> None:

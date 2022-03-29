@@ -1,6 +1,7 @@
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import Any
 from tests import TestFile, Test
 import logging
 
@@ -31,12 +32,9 @@ def configure_logger_logging(logger, logging_level, logging_file) -> None:
         # add the handlers to logger
         logger.addHandler(console_handler)
 
-def cut_next_words(self, word_list, num_of_words) -> None:
-        after_cutting = word_list[num_of_words:]
-        if after_cutting == ['']:
-            word_list[:] = []
-        else:
-            word_list[:] = after_cutting
+
+
+TEST_LINES_LENGTH = 3
 
 class TestFilesParser:
     def __init__(self, logging_level, logging_file = None) -> None: 
@@ -52,7 +50,6 @@ class TestFilesParser:
         logger = logging.getLogger('test_parser')
         configure_logger_logging(logger, logging_level, logging_file)
         self.logger = logger
-        self.test_lines_length = 3
 
     def file_to_lines(self, file: str) -> list[str]:
         with open(file, 'r') as file:
@@ -106,7 +103,7 @@ class TestFilesParser:
                     pass
                 current_test_lines.append(word_list)
                 # when we reach the possibility of Type, Name and Test, it means we're ready to read
-                if len(current_test_lines) == self.test_lines_length:
+                if len(current_test_lines) == TEST_LINES_LENGTH:
                     self.parse_test(test_file, current_test_lines)
                     # removing all junk from before in any case, for the next test to come out
                     current_test_lines[:] = []
@@ -126,27 +123,59 @@ class ParsingTestStates(Enum):
 
 
 class TestParser(ABC):
+    @abstractproperty
+    def dict_of_parser_commands(self) -> dict[str, Any]:
+        raise NotImplementedError()
+
     @abstractmethod
     def __init__(self, my_keyword_type: str) -> None:
         self.my_keyword_type = my_keyword_type
+        # the next functions in dictionary must get 2 variables; test - Test, and rest of line - list[str]
         self.dict_of_basic_commands = {'NAME:' : self.set_test_name, \
-            'TEST:' : self.start_reading_test}
-        self.current_parsing_state = ParsingTestStates.STAGE_TYPE
-        self.current_dict_of_commands = self.dict_of_basic_commands
+            'TEST:' : self.parse_my_own_keywords}
+        self.current_parsing_state = ParsingTestStates.STAGE_NAME
+        #self.current_dict_of_commands = self.dict_of_basic_commands
+
+    def parse_basic_keywords(self, test: Test, line: list[str]) -> None:
+        if line[0] not in self.dict_of_basic_commands:
+            raise CannotBeParsedError('keyword {} not found ')
+        # select the right keyword for the first word in line, then pass the rest of the line to function
+        self.dict_of_basic_commands[line[0]](line[:1])
+
+    # this function is being called by TestFilesParser for each TEST_LINES_LENGTH lines from a file
+    def parse_test(self, test: Test, lines_to_parse: list[list[str]]) -> None:
+        for index, line in enumerate(lines_to_parse):
+            # example, length is 3, TYPE line got reduced, so we've got 2 lines by now, so the max index should be 1
+            if index >= TEST_LINES_LENGTH - 1:
+                raise CannotBeParsedError('cannot parse test with more than {} lines'.format(' '.join(TEST_LINES_LENGTH)))
+            # calling the 'parse line' function fro each line
+            self.parse_basic_keywords(test=test, line=line)
+
+    def set_test_name(self,test: Test, name: list[str]) -> None:
+        test.set_name(name=' '.join(name))
+        self.current_parsing_state = ParsingTestStates.STAGE_TEST
 
     @abstractmethod
-    def parse_test(self, test: Test, lines_to_parse: list[list[str]]) -> None:
+    def parse_my_own_keywords(self, test: Test, lines_to_parse: list[str]) -> None:
         raise NotImplementedError()
+        
+    def cut_next_words(self, word_list, num_of_words) -> None:
+        after_cutting = word_list[num_of_words:]
+        if after_cutting == ['']:
+            word_list[:] = []
+        else:
+            word_list[:] = after_cutting
+
 
 class DlepTestParser(TestParser):
     def __init__(self, parsers_dict : dict[str, TestParser]) -> None:
         super().__init__('DLEP')
         parsers_dict[self.my_keyword_type] = self
-        self.dict_of_dlep_commands = {'SIGNAL' : self.set_signal, \
+        self.dict_of_parser_commands = {'SIGNAL' : self.set_signal, \
             'TO_INCLUDE' : self.set_to_include, \
             'TO_NOT_INCLUDE' : self.set_to_not_include}
 
-    def parse_test(self, test: Test, lines_to_parse: list[list[str]]) -> Test:
+    def parse_my_own_keywords(self, test: Test, line: list[str]) -> Test:
         pass
 
 
@@ -159,7 +188,7 @@ class SnmpTestParser(TestParser):
             'OF_TYPE' : self.set_mib_type, \
             'WITH_VALUE' : self.set_mib_value}
 
-    def parse_test(self, test: Test, lines_to_parse: list[list[str]]) -> Test:
+    def parse_my_own_keywords(self, test: Test, line: list[str]) -> Test:
         pass
 
 '''
