@@ -120,7 +120,7 @@ class SnmpTest(Test):
         pass
 
 class TestFile:
-    def __init__(self, file_name: str):
+    def __init__(self, file_name: str) -> None:
         self.test_types = {'DLEP' : DlepTest, 'SNMP' : SnmpTest}
         self.tests = []
         self.file_name = file_name
@@ -131,5 +131,8 @@ class TestFile:
         # example for the next line is DlepTest(type, DlepTestParser)
         return True, self.test_types[test_type](test_type)
 
-    def add_test(self, test: Test):
+    def add_test(self, test: Test) -> None:
         self.tests.append(test)
+
+    def get_file_name(self) -> str:
+        return self.file_name

@@ -113,11 +113,11 @@ def make_test_list():
     tests_path = '/tests/*'
     # creating list of all test files from path
     all_files = create_basic_files_list(tests_path)
-    # creating @TestParser and parsing all files, filtering bad files
-    test_parser = TestFilesParser(logging_level)
-    test_parser.parse_files(all_files)
-    # next line returns a dict of files which succeeded the parsing as {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}
-    parsed_files_json = test_parser.get_test_files_after_parsing()
+    # creating @TestFilesParser and parsing all files, filtering bad files
+    test_file_parser = TestFilesParser(logging_level)
+    test_file_parser.parse_files(all_files)
+    # next line returns a dict of files which succeeded the parsing as {'path1' : [subpath1,subpath2,...], 'path2' : [subpath1,subpath2,...], ...}
+    parsed_files_json = test_file_parser.get_test_files_after_parsing()
     logger.info('parsed_files_json: {}'.format(parsed_files_json))
     available_test_suites = create_available_test_suites_json(parsed_files_json)
     # insert the json into mongoDB

@@ -116,6 +116,23 @@ class TestFilesParser:
             self.logger.error('file {} cannot be parsed. error message -> {}'.format(file, e.get_message()))
         self.test_files.append(test_file)
 
+    # returns a dict of files which succeeded the parsing as {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}
+    def get_test_files_after_parsing(self) -> dict[str, list[str]]:
+        dict_all_tests_files = {}
+        for file in self.test_files:
+            # getting the file_path
+            file_path = file.get_file_name()
+            # getting the subpath of /tests/subpath/...
+            sub_path = file_path.split('/')[1]
+            self.logger.info('subpath is {} for {}'.format(sub_path, file_path))
+            # in case it's the first time of seeing this sub_path, creating a list for this sub_path
+            if sub_path not in dict_all_tests_files:
+                dict_all_tests_files[sub_path] = []
+            # append the sub_path list in the dictionary with the file_path
+            dict_all_tests_files[sub_path].append(file_path)
+        return dict_all_tests_files
+        
+
 
 class TestParser(ABC):
     @abstractmethod
