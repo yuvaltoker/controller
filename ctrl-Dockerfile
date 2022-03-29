@@ -1,31 +1,37 @@
 # What image do we start from
-FROM ubuntu:latest
+FROM ubuntu:18.04
 
 ###################################
 #      rabbitmq dependencies      #
 ###################################
 # install python dependencies
 RUN apt update && apt upgrade -y
-RUN apt install -y python curl
-RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py && python get-pip.py
-RUN python -m pip install pika --upgrade
-RUN pip install --upgrade pip enum34
+
+RUN apt install -y python3 python3-pip curl
+RUN pip3 install pika
+RUN pip3 install mpire
+### 
+#RUN apt install -y python curl
+#RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py && python get-pip.py
+#RUN python -m pip install pika --upgrade
+#RUN pip install --upgrade pip enum34
 # for multiproccessing-
-RUN pip install mpire
+#RUN pip install mpire
+###
 
 ##################################
 #      mongodb dependencies      #
 ##################################
 # install python dependencies
 
-RUN python -m pip install pymongo pandas
+RUN pip3 install pymongo pandas
 # if an error accurs check last comment on https://stackoverflow.com/questions/52857945/python2-installing-json-util
 
 #####################################
 #      controller dependencies      #
 #####################################
 # install wait package
-RUN python -m pip install waiting
+RUN pip3 install waiting
 
 ##################################################
 #      waiting for other containers service      #
@@ -47,4 +53,4 @@ RUN chmod +x /controller-scripts/controller.py
 
 
 ## Launch the wait tool and then your application
-CMD /wait && python /controller-scripts/controller.py
+CMD /wait && python3 /controller-scripts/controller.py
