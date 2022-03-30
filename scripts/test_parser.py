@@ -1,7 +1,8 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod, abstractproperty
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 from tests import TestFile, Test
 import logging
 
@@ -9,7 +10,7 @@ class CannotBeParsedError(Exception):
     """Custom error which raised when a test/file cannot be parsed"""
     def __init__(self, message: str) -> None:
         self.message = message
-        super.__init__(message)
+        super().__init__(message)
 
 def configure_logger_logging(logger, logging_level, logging_file) -> None:
         logger.setLevel(logging_level)
@@ -61,6 +62,12 @@ class TestFilesParser:
         for file in files:
             self.parse_file(file)
 
+    #def get_parser_by_type(self, test_type: str) -> Optional[TestParser]:
+    #    for parser in self.dict_test_parsers:
+    #        if parser.get_my_keyword_type() == test_type:
+    #            return parser
+    #    return None
+
     def parse_test(self, test_file: TestFile, current_test_lines: List[List[str]]) -> None:
         '''parse test by given lines, in case of success, add the test into test_file's list of tests'''
         line = current_test_lines[0]
@@ -75,11 +82,14 @@ class TestFilesParser:
         # if test_type is not in self.dict_test_parser
         if not test_type in self.dict_test_parsers:
             raise CannotBeParsedError('TYPE value {} not found in test parser dict'.format(' '.join(test_type)))
-        current_test_lines[:] = current_test_lines[:1]
+        current_test_lines[:] = current_test_lines[1:]
         # test parser should get @Test and list of lines (list[list[str]]) containing 2 lines, the 2nd and 3rd lines
-        parser = self.dict_test_parsers[test_type]
+        parser = self.dict_test_parsers.get(test_type)
+        if parser is None:
+            raise CannotBeParsedError('could not find compatible parser to type {}'.format(' '.join(test_type)))
         # parsing the test
-        test = parser.parse_test(test=test, lines_to_parse=current_test_lines)
+        parser.parse_test(test=test, 
+            lines_to_parse=current_test_lines)
         # checking successful parsing, in case of failure an exception will be raised
         if test.check_if_test_ready():
             # add the current test into list of tests
@@ -113,7 +123,9 @@ class TestFilesParser:
             if current_test_lines != []:
                 raise CannotBeParsedError('tdf file got spare line/s')
         except CannotBeParsedError as e:
-            self.logger.error('file {} cannot be parsed. error message -> {}'.format(file, e.get_message()))
+            self.logger.error('file {} cannot be parsed. error message -> {}'.format(file, e.message))
+            # stopping the function in order to not add the file
+            return 
         self.test_files.append(test_file)
 
     # returns a dict of files which succeeded the parsing as {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}
@@ -122,16 +134,15 @@ class TestFilesParser:
         for file in self.test_files:
             # getting the file_path
             file_path = file.get_file_name()
-            # getting the subpath of /tests/subpath/...
-            sub_path = file_path.split('/')[1]
+            # getting the subpath given the path is /tests/subpath/...
+            sub_path = file_path.split('/')[2]
             self.logger.info('subpath is {} for {}'.format(sub_path, file_path))
             # in case it's the first time of seeing this sub_path, creating a list for this sub_path
             if sub_path not in dict_all_tests_files:
                 dict_all_tests_files[sub_path] = []
             # append the sub_path list in the dictionary with the file_path
             dict_all_tests_files[sub_path].append(file_path)
-        return dict_all_tests_files
-        
+        return dict_all_tests_files  
 
 
 class TestParser(ABC):
@@ -144,17 +155,21 @@ class TestParser(ABC):
         self.dict_of_parser_commands = dict_of_parser_commands
         #self.current_dict_of_commands = self.dict_of_basic_commands
 
+    def get_my_keyword_type(self) -> str:
+        return self.my_keyword_type
+
     def parse_generic_parser_keywords(self, test: Test, line: List[str]) -> None:
         if not self.is_keyword_in_dict(dict=self.dict_of_basic_commands,
             keyword=line[0]):
             raise CannotBeParsedError('keyword {} not found '.format(''.join(line[0])))  
         # select the right keyword for the first word in line, then pass the rest of the line to function
-        self.dict_of_basic_commands[line[0]](line[:1])
+        self.dict_of_basic_commands[line[0]](test=test, line=line[1:])
 
     def parse_specific_parser_keywords(self, test: Test, line: List[str]) -> None:
         while len(line):
-            if self.is_keyword_in_dict(dict=self.dict_of_parser_commands,
+            if not self.is_keyword_in_dict(dict=self.dict_of_parser_commands,
                 keyword=line[0]):
+                print(self.dict_of_parser_commands)
                 raise CannotBeParsedError('keyword {} not found '.format(''.join(line[0])))
             # select the right keyword for the first word in line, then pass the rest of the line to function
             self.dict_of_parser_commands[line[0]](test=test,
@@ -166,11 +181,12 @@ class TestParser(ABC):
             # example, length is 3, TYPE line got reduced, so we've got 2 lines by now, so the max index should be 1
             if index >= TEST_LINES_LENGTH - 1:
                 raise CannotBeParsedError('cannot parse test with more than {} lines'.format(' '.join(TEST_LINES_LENGTH)))
-            # calling the 'parse line' function fro each line
-            self.parse_generic_parser_keywords(test=test, line=line)
+            # calling the 'parse line' function from each line
+            self.parse_generic_parser_keywords(test=test, 
+                line=line)
 
-    def set_test_name(self,test: Test, name: List[str]) -> None:
-        test.set_name(name=' '.join(name))
+    def set_test_name(self,test: Test, line: List[str]) -> None:
+        test.set_name(name=' '.join(line))
         
     def is_keyword_in_dict(self, dict: Dict[str, Any], keyword: str) -> bool:
         return keyword in dict
@@ -186,12 +202,19 @@ class TestParser(ABC):
 class DlepTestParser(TestParser):
     def __init__(self, parsers_dict : Dict[str, TestParser]) -> None:
         # the next functions in dictionary must get 2 variables; test - Test, and rest of line - list[str]
-        dict_of_parser_commands = {'SIGNAL' : self.set_signal,
+        dict_of_parser_commands = {'EXPECT' : self.set_expect,
+            'SIGNAL' : self.set_signal,
             'TO_INCLUDE' : self.set_to_include,
             'TO_NOT_INCLUDE' : self.set_to_not_include}
         super().__init__(my_keyword_type='DLEP', 
             dict_of_parser_commands=dict_of_parser_commands)
+        # regrister DlepTestParser to parsers_dict by using {self.my_keyword_type : self}
         parsers_dict[self.my_keyword_type] = self      
+
+    def set_expect(self, test: Test, line: List[str]) -> None:
+        test.set_expect(expect=True)
+        # next word after this is 'SIGNAL', which is not a garbage word
+        self.cut_next_words(word_list=line, num_of_words=1)
 
     def set_signal(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'SIGNAL' keyword, then the signal itself
@@ -214,7 +237,8 @@ class DlepTestParser(TestParser):
 class SnmpTestParser(TestParser):
     def __init__(self, parsers_dict : Dict[str, TestParser]) -> None:
         # the next functions in dictionary must get 2 variables; test - Test, and rest of line - list[str]
-        dict_of_parser_commands = {'OID' : self.set_oid,
+        dict_of_parser_commands = {'EXPECT' : self.set_expect,
+            'OID' : self.set_oid,
             'TO_BE' : self.set_to_be,
             'OF_TYPE' : self.set_mib_type,
             'WITH_VALUE' : self.set_mib_value}
@@ -222,26 +246,31 @@ class SnmpTestParser(TestParser):
             dict_of_parser_commands=dict_of_parser_commands)
         parsers_dict[self.my_keyword_type] = self
 
+    def set_expect(self, test: Test, line: List[str]) -> None:
+        test.set_expect(expect=True)
+        # next word after this is 'OID', which is not a garbage word
+        self.cut_next_words(word_list=line, num_of_words=1)
+
     def set_oid(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'OID' keyword, then the oid itself
-        test.set_oid(signal=line[1])
+        test.set_oid(oid=line[1])
         # removing the 'OID' keyword and the oid itself
         self.cut_next_words(word_list=line, num_of_words=2)
 
     def set_to_be(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'TO_BE' keyword, then the readonly/settable
-        test.set_to_be(signal=line[1])
+        test.set_command(command=line[1])
         # removing the 'TO_BE' keyword and the readonly/settable
         self.cut_next_words(word_list=line, num_of_words=2)
 
     def set_mib_type(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'OF_TYPE' keyword, then the type itself
-        test.set_mib_type(signal=line[1])
+        test.set_mib_type(mib_type=line[1])
         # removing the 'OF_TYPE' keyword and the type itself
         self.cut_next_words(word_list=line, num_of_words=2)
 
     def set_mib_value(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'WITH_VALUE' keyword, then the value expression itself
-        test.set_mib_value(signal=line[1])
+        test.set_mib_value(mib_value=line[1])
         # removing the 'WITH_VALUE' keyword and the value expression itself
         self.cut_next_words(word_list=line, num_of_words=2)

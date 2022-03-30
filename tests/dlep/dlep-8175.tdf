@@ -1,3 +1,3 @@
 TYPE: DLEP
 NAME: Just another example for yuval's brain
-TEST: EXPECT SIGNAL "Peer_Offer" TO_INCLUDE     DATA_ITEM "Peer_Type" TO_INCLUDE    SUB_DATA_ITEM "Example"
+TEST: SIGNAL "Peer_Offer" TO_INCLUDE     DATA_ITEM "Peer_Type" TO_INCLUDE    SUB_DATA_ITEM "Example"

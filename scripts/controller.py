@@ -127,7 +127,7 @@ def make_test_list():
     # sends over rabbitmq the uid of the inserted document
     rmq_handler.send('', 'tests_list', str(uid))
     # returning full parsed @TestFile list for later use of running tests
-    return test_parser.get_test_files()
+    return test_file_parser.get_test_files_after_parsing()
 
 def is_setup_ready():
     message = 'ctrl: setup_ready flag - {0}'.format(flags[1]['setup_ready'])

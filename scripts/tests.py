@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 
 class Test(ABC):
     name: str
+    expect: bool = False
     @abstractmethod
     def __init__(self, test_type: str) -> None:
         self.test_type = test_type
@@ -23,6 +24,9 @@ class Test(ABC):
 
     def set_name(self, name: str) -> None:
         self.name = name
+
+    def set_expect(self, expect: bool) -> None:
+        self.expect = expect
 
     @abstractmethod
     def exec_test(self) -> None:
@@ -63,7 +67,7 @@ class DlepTest(Test):
         return self.test_to_json()
     
     def check_if_test_ready(self) -> bool:
-        if self.name != '' and self.signal != '' and self.is_signal_need_to_include != '' and self.data_item != '':
+        if self.expect and self.name != '' and self.signal != '' and self.is_signal_need_to_include != '' and self.data_item != '':
             if self.is_data_item_need_to_include != '' and self.sub_data_item == '':
                 return False
             return True
@@ -111,7 +115,7 @@ class SnmpTest(Test):
         return self.test_to_json()
 
     def check_if_test_ready(self) -> bool:
-        if self.name != '' and self.oid != '' and self.command != '' and self.mib_type != '':
+        if self.expect and self.name != '' and self.oid != '' and self.command != '' and self.mib_type != '':
             return True
         return False
 
