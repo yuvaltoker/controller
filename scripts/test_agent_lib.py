@@ -272,3 +272,18 @@ class SnmpTestParser(TestParser):
         test.set_mib_value(mib_value=line[1])
         # removing the 'WITH_VALUE' keyword and the value expression itself
         self.cut_next_words(word_list=line, num_of_words=2)
+
+class TestFilesExecuter:
+    def __init__(self, logging_level, logging_file = None) -> None: 
+        # when adding new type of TestExecuter's child, add the class' name here
+        self.list_test_executer_types = {DlepTestExecuter, SnmpTestExecuter}
+        # here will be saved dict of [str(keyword), Testexecuter(child)], for example {'DLEP', DlepTestExecuter}
+        self.dict_test_executers = {}
+        # fill the above dict, by calling the init func the test_executer child class will register itself to the dict
+        for executer_class in self.list_test_executer_types:
+            executer_class(parsers_dict=self.dict_test_executers)
+        self.test_files = []
+        # logging
+        logger = logging.getLogger('test_executer')
+        configure_logger_logging(logger, logging_level, logging_file)
+        self.logger = logger

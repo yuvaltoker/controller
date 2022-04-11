@@ -17,7 +17,7 @@ from pandas import DataFrame
 # for background waiting function, use multiproccessing
 from multiprocessing import Process, Manager
 # for testing with TestFilesParser
-from test_agent_lib import TestFilesParser
+from test_agent_lib import TestFilesExecuter, TestFilesParser
 # for reading files from path
 import glob
 # for delay use
@@ -158,8 +158,9 @@ def pdfs_ready_event_handler() -> str:
 def pick_chosen_tests(parsed_files: List[str]) -> None:
     # getting filtered document by ConfigType, then getting
     suites_to_run = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {})['SuitesToRun']
-
     logger.info(suites_to_run)
+    test_file_executer = TestFilesExecuter(logging_level)
+    
 
 def run_test() -> str:
     json_document_result_example = '''{
@@ -197,7 +198,7 @@ def controller_flow() -> None:
     parsed_testfile_list = make_test_list()
     setup_ready_event_handler()
     time.sleep(TIME_DELAY)
-    remove_unchosen_tests(parsed_testfile_list)
+    pick_chosen_tests(parsed_testfile_list)
     #run_tests(3)
     #time.sleep(TIME_DELAY)
     #all_results_ready()
