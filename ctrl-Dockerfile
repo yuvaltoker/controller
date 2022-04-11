@@ -51,7 +51,7 @@ RUN mkdir /controller-scripts
 ADD ./scripts/controller.py /controller-scripts
 ADD ./scripts/rabbitmq_handler.py /controller-scripts
 ADD ./scripts/mongodb_handler.py /controller-scripts
-ADD ./scripts/test_parser.py /controller-scripts
+ADD ./scripts/test_agent_lib.py /controller-scripts
 ADD ./scripts/tests.py /controller-scripts
 
 RUN chmod +x /controller-scripts/controller.py

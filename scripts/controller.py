@@ -4,31 +4,24 @@
 
 import logging
 from logging import handlers
-
+from typing import Any, Dict, List
 # for easy use of rabbitmq
 from rabbitmq_handler import RabbitmqHandler
 # for easy read/write on mongodb
 from mongodb_handler import MongodbHandler
-
 from json import dumps, loads
 # for event handling
 from waiting import wait
-
 # for more convenient storing dictionaries
 from pandas import DataFrame
-
 # for background waiting function, use multiproccessing
 from multiprocessing import Process, Manager
-
 # for testing with TestFilesParser
-from test_parser import TestFilesParser
-
+from test_agent_lib import TestFilesParser
 # for reading files from path
 import glob
-
 # for delay use
 import time
-
 # for environment variables
 import os
 
@@ -42,12 +35,12 @@ rmq_handler = RabbitmqHandler(logging_level)
 mdb_handler = MongodbHandler()
 manager = Manager()
 flags = manager.dict()
-time_delay = int(os.getenv('TIME_DELAY'))
+TIME_DELAY = int(os.getenv('TIME_DELAY'))
 
 # for logging
 logger = logging.getLogger('ctrl')
 
-def configure_logger_logging(logging_level):
+def configure_logger_logging(logging_level: int) -> None:
     logger.setLevel(logging_level)
     # create formatter and add it to the handlers
     formatter = logging.Formatter(
@@ -68,18 +61,17 @@ def configure_logger_logging(logging_level):
     # add the handlers to logger
     logger.addHandler(console_handler)
 
-def get_files_to_list(path):
-    all_files = []
-    for file in glob.glob(path):
-        all_files.append(file)
-    return all_files
+def get_files_to_list(path: str) -> List[str]:
+    return glob.glob(path)
+    
+    
 
 # create the next list from /tests/ path:
 # [path1, path2, path3, ..., pathN]
 # doing that by:
 # stage 1: create list of all folders ['/tests/snmp', '/tests/snmp']
 # stage 2: create a list of all the files in those paths, that means all the /tests/**/*.tdf
-def create_basic_files_list(path):
+def create_basic_files_list(path: str) -> List[str]:
     # stage 1
     folders = get_files_to_list(path)
     paths = []
@@ -90,8 +82,8 @@ def create_basic_files_list(path):
 
 # gets {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}
 # creates available_test_suites_json
-# returns the created json
-def create_available_test_suites_json(json_paths):
+# returns available_test_suites_json
+def create_available_test_suites_json(json_paths: Dict[str, List[str]]) -> Dict[str, Any]:
     test_suites = []
     for key, val in json_paths.items():
         test_suite = {}
@@ -106,7 +98,7 @@ def create_available_test_suites_json(json_paths):
 # first function to be called
 # this function handles reading test files and parsing them, inserts @available_test_suites to mongoDB and sends over rabbitmq the uid of the inserted document
 # returning parsed test files list
-def make_test_list():
+def make_test_list() -> Dict[str, List[str]]:
     message = 'ctrl: test list in proggress...'
     logger.info(message)
 
@@ -129,18 +121,18 @@ def make_test_list():
     # returning full parsed @TestFile list for later use of running tests
     return test_file_parser.get_test_files_after_parsing()
 
-def is_setup_ready():
+def is_setup_ready() -> bool:
     message = 'ctrl: setup_ready flag - {0}'.format(flags[1]['setup_ready'])
     logger.debug(message)
     return flags[1]['setup_ready']
 
-def is_pdfs_ready():
+def is_pdfs_ready() -> bool:
     message = 'ctrl: pdfs flag - {0}'.format(flags[1]['pdfs_ready'])
     logger.debug(message)
     return flags[1]['pdfs_ready']
 
 # creating an event handler - waiting for a message of setup ready
-def setup_ready_event_handler():
+def setup_ready_event_handler() -> None:
     message = 'ctrl: im waiting for setup ready'
     logger.info(message)
     setup_ready_lisenter = Process(target=rmq_handler.wait_for_message, args=('setup_ready',flags,))
@@ -149,7 +141,7 @@ def setup_ready_event_handler():
     wait(lambda: is_setup_ready(), waiting_for="setup to be ready")
     setup_ready_lisenter.terminate()
 
-def pdfs_ready_event_handler():
+def pdfs_ready_event_handler() -> str:
     message = 'ctrl: im waiting for pdfs ready'
     logger.info(message)
     pdfs_ready_lisenter = Process(target=rmq_handler.request_pdf, args=(flags,))
@@ -163,13 +155,13 @@ def pdfs_ready_event_handler():
 
 # input: list of parsed files
 # picks test files by the list of files given from app (in mongoDB 'Configuration' collection, in 'ConfigType' = 'TestConfig')
-def pick_chosen_tests(parsed_files):
+def pick_chosen_tests(parsed_files: List[str]) -> None:
     # getting filtered document by ConfigType, then getting
     suites_to_run = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {})['SuitesToRun']
 
     logger.info(suites_to_run)
 
-def run_test():
+def run_test() -> str:
     json_document_result_example = '''{
 	    "name": "Check if the signal Peer_Offer includes data item Peer_Type",
 	    "result": "Pass/Fail"
@@ -178,7 +170,7 @@ def run_test():
     uid = mdb_handler.insert_document('Test Results', loads(json_document_result_example))
     return uid
 
-def run_tests(num_of_tests):
+def run_tests(num_of_tests: int):
     message = 'ctrl: im running the tests one by one'
     logger.info(message)
     for index in range(num_of_tests):
@@ -186,33 +178,33 @@ def run_tests(num_of_tests):
         message = 'ctrl: got result - %s' % test_uid
         logger.info(message)
         rmq_handler.send('', 'results', str(test_uid))
-        time.sleep(time_delay / 2)
+        time.sleep(TIME_DELAY / 2)
     message = 'ctrl: done running tests'
     logger.info(message)
 
-def all_results_ready():
+def all_results_ready() -> None:
     message = 'ctrl: sending all results ready'
     logger.info(message)
     rmq_handler.send('', 'all_results_ready', '')
     link = pdfs_ready_event_handler()
     logger.info(link)
-    time.sleep(time_delay)
+    time.sleep(TIME_DELAY)
     message = 'ctrl: sending pdf ready'
     logger.info(message)
     rmq_handler.send('', 'pdf_ready', link)
     
-def controller_flow():
+def controller_flow() -> None:
     parsed_testfile_list = make_test_list()
     setup_ready_event_handler()
-    time.sleep(time_delay)
+    time.sleep(TIME_DELAY)
     remove_unchosen_tests(parsed_testfile_list)
     #run_tests(3)
-    #time.sleep(time_delay)
+    #time.sleep(TIME_DELAY)
     #all_results_ready()
 
-def main():
+def main() -> None:
     flags[1] = {'setup_ready' : False, 'pdfs_ready' : False, 'pdf_link' : ''}
-    configure_logger_logging(logging_level)
+    configure_logger_logging(logging_level=logging_level)
     controller_flow()
 
 
