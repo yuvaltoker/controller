@@ -1,5 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from doctest import testfile
 from typing import Any, Callable, Dict, List, Optional
 from tests import TestFile, Test
 import logging
@@ -126,8 +127,9 @@ class TestFilesParser:
             return 
         self.test_files.append(test_file)
 
-    # returns a dict of files which succeeded the parsing as {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}
+    
     def get_test_files_after_parsing(self) -> Dict[str, List[str]]:
+        '''returns a dict of files which succeeded the parsing as {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}'''
         dict_all_tests_files = {}
         for file in self.test_files:
             # getting the file_path
@@ -140,7 +142,14 @@ class TestFilesParser:
                 dict_all_tests_files[sub_path] = []
             # append the sub_path list in the dictionary with the file_path
             dict_all_tests_files[sub_path].append(file_path)
-        return dict_all_tests_files  
+        return dict_all_tests_files
+
+    def get_test_files_dict(self) -> Dict[str, TestFile]:
+        '''returns the next dict: {path1 : TestFile1, path2 : TestFile2, ..., pathN : TestFileN}'''
+        return {test_file.get_file_name() : test_file for test_file in self.test_files}
+
+    
+
 
 
 class TestParser(ABC):
@@ -287,3 +296,7 @@ class TestFilesExecuter:
         logger = logging.getLogger('test_executer')
         configure_logger_logging(logger, logging_level, logging_file)
         self.logger = logger
+
+    def get_requested_test_files_dict(self, all_files: Dict[str, TestFile], paths: List[str]) -> Dict[str, TestFile]:
+        '''returns the next dict: {path1 : TestFile1, path2 : TestFile2, ..., pathN : TestFileN} filtered by given list of files' names'''
+        return {test_file.get_file_name() : test_file for test_file in all_files if test_file.get_file_name() in paths}

@@ -10,6 +10,7 @@ from rabbitmq_handler import RabbitmqHandler
 # for easy read/write on mongodb
 from mongodb_handler import MongodbHandler
 from json import dumps, loads
+from tests import TestFile
 # for event handling
 from waiting import wait
 # for more convenient storing dictionaries
@@ -153,14 +154,15 @@ def pdfs_ready_event_handler() -> str:
     logger.info(message)
     return flags[1]['pdf_link']
 
-# input: list of parsed files
+# input: dict of parsed files
 # picks test files by the list of files given from app (in mongoDB 'Configuration' collection, in 'ConfigType' = 'TestConfig')
-def pick_chosen_tests(parsed_files: List[str]) -> None:
+def pick_chosen_tests(parsed_files: Dict[str, TestFile]) -> Dict[str, TestFile]:
     # getting filtered document by ConfigType, then getting
     suites_to_run = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {})['SuitesToRun']
     logger.info(suites_to_run)
-    test_file_executer = TestFilesExecuter(logging_level)
-    
+    test_file_executer = TestFilesExecuter(logging_level=logging_level)
+    filtered_test_files = test_file_executer.get_requested_test_files_dict(all_files=parsed_files, paths=suites_to_run)
+    return filtered_test_files
 
 def run_test() -> str:
     json_document_result_example = '''{
