@@ -29,7 +29,8 @@ class Test(ABC):
         self.expect = expect
 
     @abstractmethod
-    def exec_test(self) -> None:
+    def exec_test(self) -> bool:
+        '''returns if test pass/fail (True/False)'''
         raise NotImplementedError()
 
 class DlepTest(Test):
@@ -73,8 +74,9 @@ class DlepTest(Test):
             return True
         return False
 
-    def exec_test(self) -> None:
-        pass
+    def exec_test(self) -> bool:
+        '''returns if test pass/fail (True/False)'''
+        return True
     
 
 class SnmpTest(Test):
@@ -119,8 +121,9 @@ class SnmpTest(Test):
             return True
         return False
 
-    def exec_test(self) -> None:
-        pass
+    def exec_test(self) -> bool:
+        '''returns if test pass/fail (True/False)'''
+        return True
 
 class TestFile:
     def __init__(self, file_name: str) -> None:

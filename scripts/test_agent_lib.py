@@ -1,8 +1,13 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from doctest import testfile
+import os
+from time import time
 from typing import Any, Callable, Dict, List, Optional
-from tests import TestFile, Test
+
+from simplejson import loads
+from scripts.mongodb_handler import MongodbHandler
+from scripts.rabbitmq_handler import RabbitmqHandler
+from scripts.tests import TestFile, Test
 import logging
 
 class CannotBeParsedError(Exception):
@@ -35,6 +40,33 @@ def configure_logger_logging(logger, logging_level, logging_file) -> None:
 
 
 TEST_LINES_LENGTH = 3
+TIME_DELAY = int(os.getenv('TIME_DELAY'))
+
+class TestFilesHandler:
+    '''class handling parsing and executing test files, acts as master agent when it comes to test files'''
+    def __init__(self, logging_level, logging_file = None) -> None: 
+        logger = logging.getLogger('test_files_handler')
+        self.test_files = {}
+        self.test_file_parser = TestFilesParser(logging_level=logging_level)
+        self.test_file_executer = TestFilesExecuter(logging_level=logging_level)
+
+
+    def parse_files(self, files: List[str]) -> None:
+        self.test_file_parser.parse_file(files)
+        self.test_files = self.test_file_parser.get_test_files_dict()
+
+    def get_test_files_arranged_by_folders(self) -> Dict[str, List[str]]:
+        '''returns a dict of files which succeeded the parsing as {folder1 : [path1,path2,...], folder2 : [path1,path2,...]}'''
+        return self.test_file_parser.get_test_files_arranged_by_folders()
+
+    def execute_tests_files(self, mdb_handler: MongodbHandler, rmq_handler: RabbitmqHandler, test_files_paths: str) -> None:
+        '''execute test files'''
+        for test_file_path in test_files_paths:
+            test_file = self.test_files[test_file_path]
+            self.test_file_executer.execute_test_file(mdb_handler=mdb_handler, 
+                rmq_handler=rmq_handler, 
+                test_file=test_file)
+
 
 class TestFilesParser:
     def __init__(self, logging_level, logging_file = None) -> None: 
@@ -128,8 +160,8 @@ class TestFilesParser:
         self.test_files.append(test_file)
 
     
-    def get_test_files_after_parsing(self) -> Dict[str, List[str]]:
-        '''returns a dict of files which succeeded the parsing as {'dlep' : [path1,path2,...], 'snmp' : [path1,path2,...]}'''
+    def get_test_files_arranged_by_folders(self) -> Dict[str, List[str]]:
+        '''returns a dict of files which succeeded the parsing as {folder1 : [path1,path2,...], folder2 : [path1,path2,...]}'''
         dict_all_tests_files = {}
         for file in self.test_files:
             # getting the file_path
@@ -297,6 +329,23 @@ class TestFilesExecuter:
         configure_logger_logging(logger, logging_level, logging_file)
         self.logger = logger
 
-    def get_requested_test_files_dict(self, all_files: Dict[str, TestFile], paths: List[str]) -> Dict[str, TestFile]:
-        '''returns the next dict: {path1 : TestFile1, path2 : TestFile2, ..., pathN : TestFileN} filtered by given list of files' names'''
-        return {test_file.get_file_name() : test_file for test_file in all_files if test_file.get_file_name() in paths}
+    def execute_test_file(self, mdb_handler: MongodbHandler, rmq_handler: RabbitmqHandler, test_file: TestFile) -> None:
+        for test in test_file.tests:
+            self.exec(mdb_handler=mdb_handler, rmq_handler=rmq_handler, test=test)
+        time.sleep(TIME_DELAY / 2)
+
+    ###################################################################
+    # exec test should be in DlepTestExecuter, SnmpTestExecuter
+    ###################################################################
+    def exec_test(self, mdb_handler: MongodbHandler, rmq_handler: RabbitmqHandler, test: Test) -> bool:
+        '''returns if test pass/fail (True/False)'''
+        json_document_result_example = '''{
+	        "name": "Check if the signal Peer_Offer includes data item Peer_Type",
+	        "result": "Pass/Fail"
+        }
+        '''
+        result_uid = mdb_handler.insert_document('Test Results', loads(json_document_result_example))
+        message = 'ctrl: got result - %s' % result_uid
+        self.logger.info(message)
+        rmq_handler.send('', 'results', str(result_uid))
+        return True

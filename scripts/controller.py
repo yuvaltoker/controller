@@ -18,7 +18,7 @@ from pandas import DataFrame
 # for background waiting function, use multiproccessing
 from multiprocessing import Process, Manager
 # for testing with TestFilesParser
-from test_agent_lib import TestFilesExecuter, TestFilesParser
+from test_agent_lib import TestFilesExecuter, TestFilesHandler, TestFilesParser
 # for reading files from path
 import glob
 # for delay use
@@ -98,19 +98,17 @@ def create_available_test_suites_json(json_paths: Dict[str, List[str]]) -> Dict[
 
 # first function to be called
 # this function handles reading test files and parsing them, inserts @available_test_suites to mongoDB and sends over rabbitmq the uid of the inserted document
-# returning parsed test files list
-def make_test_list() -> Dict[str, List[str]]:
+# returning parsed test files list as {'path1' : [subpath1,subpath2,...], 'path2' : [subpath1,subpath2,...], ...}
+def make_test_list(test_files_handler: TestFilesHandler) -> Dict[str, List[str]]:
     message = 'ctrl: test list in proggress...'
     logger.info(message)
-
     tests_path = '/tests/*'
     # creating list of all test files from path
     all_files = create_basic_files_list(tests_path)
-    # creating @TestFilesParser and parsing all files, filtering bad files
-    test_file_parser = TestFilesParser(logging_level)
-    test_file_parser.parse_files(all_files)
+    #filtering bad files
+    test_files_handler.parse_files(all_files)
     # next line returns a dict of files which succeeded the parsing as {'path1' : [subpath1,subpath2,...], 'path2' : [subpath1,subpath2,...], ...}
-    parsed_files_json = test_file_parser.get_test_files_after_parsing()
+    parsed_files_json = test_files_handler.get_test_files_arranged_by_folders()
     logger.info('parsed_files_json: {}'.format(parsed_files_json))
     available_test_suites = create_available_test_suites_json(parsed_files_json)
     # insert the json into mongoDB
@@ -120,7 +118,7 @@ def make_test_list() -> Dict[str, List[str]]:
     # sends over rabbitmq the uid of the inserted document
     rmq_handler.send('', 'tests_list', str(uid))
     # returning full parsed @TestFile list for later use of running tests
-    return test_file_parser.get_test_files_after_parsing()
+    return parsed_files_json
 
 def is_setup_ready() -> bool:
     message = 'ctrl: setup_ready flag - {0}'.format(flags[1]['setup_ready'])
@@ -173,15 +171,13 @@ def run_test() -> str:
     uid = mdb_handler.insert_document('Test Results', loads(json_document_result_example))
     return uid
 
-def run_tests(num_of_tests: int):
-    message = 'ctrl: im running the tests one by one'
-    logger.info(message)
-    for index in range(num_of_tests):
-        test_uid = run_test()
-        message = 'ctrl: got result - %s' % test_uid
-        logger.info(message)
-        rmq_handler.send('', 'results', str(test_uid))
-        time.sleep(TIME_DELAY / 2)
+def run_tests(test_files_handler: TestFilesHandler) -> None:
+    # getting filtered document by ConfigType, then getting
+    chosen_paths = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {})['SuitesToRun']
+    logger.info(chosen_paths)
+    test_files_handler.execute_tests_files(mdb_handler=mdb_handler, 
+        rmq_handler=rmq_handler, 
+        test_files_paths=chosen_paths)
     message = 'ctrl: done running tests'
     logger.info(message)
 
@@ -197,10 +193,12 @@ def all_results_ready() -> None:
     rmq_handler.send('', 'pdf_ready', link)
     
 def controller_flow() -> None:
-    parsed_testfile_list = make_test_list()
+    test_files_handler = TestFilesHandler(logging_level=logging_level)
+    parsed_testfile_list = make_test_list(test_files_handler=test_files_handler)
     setup_ready_event_handler()
     time.sleep(TIME_DELAY)
-    pick_chosen_tests(parsed_testfile_list)
+    run_tests(test_files_handler=test_files_handler)
+    chosen_test_files = pick_chosen_tests(parsed_testfile_list)
     #run_tests(3)
     #time.sleep(TIME_DELAY)
     #all_results_ready()
