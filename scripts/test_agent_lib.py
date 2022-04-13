@@ -1,13 +1,13 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import os
-from time import time
+import time
 from typing import Any, Callable, Dict, List, Optional
 
-from simplejson import loads
+from json import loads
 from mongodb_handler import MongodbHandler
 from rabbitmq_handler import RabbitmqHandler
-from test_lib import TestFile, Test
+from test_lib import TestFile, Test, DLEP_KEYWORD, SNMP_KEYWORD
 import logging
 
 class CannotBeParsedError(Exception):
@@ -44,11 +44,9 @@ def configure_logger_logging(logger, logging_level, logging_file) -> None:
         logger.addHandler(console_handler)
 
 
-
 TEST_LINES_LENGTH = 3
 TIME_DELAY = int(os.getenv('TIME_DELAY'))
-DLEP_KEYWORD = 'DLEP'
-SNMP_KEYWORD = 'SNMP'
+
 
 class TestFilesHandler:
     '''class handling parsing and executing test files, acts as master agent when it comes to test files'''
@@ -58,9 +56,8 @@ class TestFilesHandler:
         self.test_file_parser = TestFilesParser(logging_level=logging_level)
         self.test_file_executer = TestFilesExecuter(logging_level=logging_level)
 
-
     def parse_files(self, files: List[str]) -> None:
-        self.test_file_parser.parse_file(files)
+        self.test_file_parser.parse_files(files)
         self.test_files = self.test_file_parser.get_test_files_dict()
 
     def get_test_files_arranged_by_folders(self) -> Dict[str, List[str]]:
@@ -70,7 +67,9 @@ class TestFilesHandler:
     def execute_tests_files(self, mdb_handler: MongodbHandler, rmq_handler: RabbitmqHandler, test_files_paths: str) -> None:
         '''execute test files'''
         for test_file_path in test_files_paths:
-            test_file = self.test_files[test_file_path]
+            # currently the app stub is working without the /tests/ in the begginning of the path in Configuration collection.
+            # so the added '/tests/' should be removed once it get fixed by the writers of the app
+            test_file = self.test_files['/tests/{}'.format(test_file_path)]
             self.test_file_executer.execute_test_file(mdb_handler=mdb_handler, 
                 rmq_handler=rmq_handler, 
                 test_file=test_file)
@@ -100,12 +99,6 @@ class TestFilesParser:
     def parse_files(self, files: List[str]) -> None:
         for file in files:
             self.parse_file(file)
-
-    #def get_parser_by_type(self, test_type: str) -> Optional[TestParser]:
-    #    for parser in self.dict_test_parsers:
-    #        if parser.get_my_keyword_type() == test_type:
-    #            return parser
-    #    return None
 
     def parse_test(self, test_file: TestFile, current_test_lines: List[List[str]]) -> None:
         '''parse test by given lines, in case of success, add the test into test_file's list of tests'''
@@ -187,9 +180,6 @@ class TestFilesParser:
     def get_test_files_dict(self) -> Dict[str, TestFile]:
         '''returns the next dict: {path1 : TestFile1, path2 : TestFile2, ..., pathN : TestFileN}'''
         return {test_file.get_file_name() : test_file for test_file in self.test_files}
-
-    
-
 
 
 class TestParser(ABC):
@@ -329,7 +319,7 @@ class TestFilesExecuter:
         self.dict_test_executers = {}
         # fill the above dict, by calling the init func the test_executer child class will register itself to the dict
         for executer_class in self.list_test_executer_types:
-            executer_class(parsers_dict=self.dict_test_executers)
+            executer_class(executers_dict=self.dict_test_executers)
         self.dict_of_optional_results = {True : 'Pass', False : 'Fail'}
         # logging
         logger = logging.getLogger('test_executer')
@@ -348,7 +338,7 @@ class TestFilesExecuter:
             test_result = self.exec_test(test=test)
             # creating result json {name : name, result : 'Pass'/'Fail'}
             json_document_result = self.build_result_json(name=test_name, result=test_result)
-            result_uid = mdb_handler.insert_document('Test Results', loads(json_document_result))
+            result_uid = mdb_handler.insert_document('Test Results', json_document_result)
             message = 'ctrl: got result - %s' % result_uid
             self.logger.info(message)
             rmq_handler.send('', 'results', str(result_uid))
@@ -367,9 +357,8 @@ class TestFilesExecuter:
 
 class TestExecuter(ABC):
     @abstractmethod
-    def __init__(self, my_keyword_type: str, executers_dict : Dict[str, TestExecuter]) -> None:
+    def __init__(self, my_keyword_type: str) -> None:
         self.my_keyword_type = my_keyword_type
-        executers_dict[self.my_keyword_type] = self
 
     @abstractmethod
     def exec_test(self, test: Test) -> bool:

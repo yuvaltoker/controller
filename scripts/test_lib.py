@@ -2,10 +2,10 @@
 
 # for easy read/write on mongodb
 from typing import Any, Dict, Tuple
-from mongodb_handler import MongodbHandler
 from abc import ABC, abstractmethod
 
-from test_agent_lib import DLEP_KEYWORD, SNMP_KEYWORD
+DLEP_KEYWORD = 'DLEP'
+SNMP_KEYWORD = 'SNMP'
 
 class Test(ABC):
     name: str
