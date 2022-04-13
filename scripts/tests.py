@@ -5,6 +5,7 @@ from typing import Any, Dict, Tuple
 from mongodb_handler import MongodbHandler
 from abc import ABC, abstractmethod
 
+from scripts.test_agent_lib import DLEP_KEYWORD, SNMP_KEYWORD
 
 class Test(ABC):
     name: str
@@ -28,10 +29,6 @@ class Test(ABC):
     def set_expect(self, expect: bool) -> None:
         self.expect = expect
 
-    @abstractmethod
-    def exec_test(self) -> bool:
-        '''returns if test pass/fail (True/False)'''
-        raise NotImplementedError()
 
 class DlepTest(Test):
     def __init__(self, test_type: str) -> None:
@@ -73,10 +70,6 @@ class DlepTest(Test):
                 return False
             return True
         return False
-
-    def exec_test(self) -> bool:
-        '''returns if test pass/fail (True/False)'''
-        return True
     
 
 class SnmpTest(Test):
@@ -121,13 +114,10 @@ class SnmpTest(Test):
             return True
         return False
 
-    def exec_test(self) -> bool:
-        '''returns if test pass/fail (True/False)'''
-        return True
 
 class TestFile:
     def __init__(self, file_name: str) -> None:
-        self.test_types = {'DLEP' : DlepTest, 'SNMP' : SnmpTest}
+        self.test_types = {DLEP_KEYWORD : DlepTest, SNMP_KEYWORD : SnmpTest}
         self.tests = []
         self.file_name = file_name
 

@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import os
 from time import time
 from typing import Any, Callable, Dict, List, Optional
+from unicodedata import name
 
 from simplejson import loads
 from scripts.mongodb_handler import MongodbHandler
@@ -12,6 +13,12 @@ import logging
 
 class CannotBeParsedError(Exception):
     """Custom error which raised when a test/file cannot be parsed"""
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(message)
+
+class CannotBeExecutedError(Exception):
+    """Custom error which raised when a test cannot be executed"""
     def __init__(self, message: str) -> None:
         self.message = message
         super().__init__(message)
@@ -41,6 +48,8 @@ def configure_logger_logging(logger, logging_level, logging_file) -> None:
 
 TEST_LINES_LENGTH = 3
 TIME_DELAY = int(os.getenv('TIME_DELAY'))
+DLEP_KEYWORD = 'DLEP'
+SNMP_KEYWORD = 'SNMP'
 
 class TestFilesHandler:
     '''class handling parsing and executing test files, acts as master agent when it comes to test files'''
@@ -192,7 +201,6 @@ class TestParser(ABC):
         self.dict_of_basic_commands = {'NAME:' : self.set_test_name, \
             'TEST:' : self.parse_specific_parser_keywords}
         self.dict_of_parser_commands = dict_of_parser_commands
-        #self.current_dict_of_commands = self.dict_of_basic_commands
 
     def get_my_keyword_type(self) -> str:
         return self.my_keyword_type
@@ -245,7 +253,7 @@ class DlepTestParser(TestParser):
             'SIGNAL' : self.set_signal,
             'TO_INCLUDE' : self.set_to_include,
             'TO_NOT_INCLUDE' : self.set_to_not_include}
-        super().__init__(my_keyword_type='DLEP', 
+        super().__init__(my_keyword_type=DLEP_KEYWORD, 
             dict_of_parser_commands=dict_of_parser_commands)
         # regrister DlepTestParser to parsers_dict by using {self.my_keyword_type : self}
         parsers_dict[self.my_keyword_type] = self      
@@ -281,7 +289,7 @@ class SnmpTestParser(TestParser):
             'TO_BE' : self.set_to_be,
             'OF_TYPE' : self.set_mib_type,
             'WITH_VALUE' : self.set_mib_value}
-        super().__init__(my_keyword_type='SNMP',
+        super().__init__(my_keyword_type=SNMP_KEYWORD,
             dict_of_parser_commands=dict_of_parser_commands)
         parsers_dict[self.my_keyword_type] = self
 
@@ -323,29 +331,67 @@ class TestFilesExecuter:
         # fill the above dict, by calling the init func the test_executer child class will register itself to the dict
         for executer_class in self.list_test_executer_types:
             executer_class(parsers_dict=self.dict_test_executers)
-        self.test_files = []
+        self.dict_of_optional_results = {True : 'Pass', False : 'Fail'}
         # logging
         logger = logging.getLogger('test_executer')
         configure_logger_logging(logger, logging_level, logging_file)
         self.logger = logger
 
+    def build_result_json(self, name: str, result: bool) -> Dict[str, str]:
+        return {'name' : name, 'result' : self.dict_of_optional_results[result]}
+    
     def execute_test_file(self, mdb_handler: MongodbHandler, rmq_handler: RabbitmqHandler, test_file: TestFile) -> None:
         for test in test_file.tests:
-            self.exec(mdb_handler=mdb_handler, rmq_handler=rmq_handler, test=test)
-        time.sleep(TIME_DELAY / 2)
+            # handling json result parts:
+            # name of test-
+            test_name = test.name
+            # executing the test and getting result-
+            test_result = self.exec_test(test=test)
+            # creating result json {name : name, result : 'Pass'/'Fail'}
+            json_document_result = self.build_result_json(name=test_name, result=test_result)
+            result_uid = mdb_handler.insert_document('Test Results', loads(json_document_result))
+            message = 'ctrl: got result - %s' % result_uid
+            self.logger.info(message)
+            rmq_handler.send('', 'results', str(result_uid))
+            time.sleep(TIME_DELAY / 2)
 
-    ###################################################################
-    # exec test should be in DlepTestExecuter, SnmpTestExecuter
-    ###################################################################
-    def exec_test(self, mdb_handler: MongodbHandler, rmq_handler: RabbitmqHandler, test: Test) -> bool:
+    def exec_test(self, test: Test) -> bool:
         '''returns if test pass/fail (True/False)'''
-        json_document_result_example = '''{
-	        "name": "Check if the signal Peer_Offer includes data item Peer_Type",
-	        "result": "Pass/Fail"
-        }
-        '''
-        result_uid = mdb_handler.insert_document('Test Results', loads(json_document_result_example))
-        message = 'ctrl: got result - %s' % result_uid
-        self.logger.info(message)
-        rmq_handler.send('', 'results', str(result_uid))
+        # get the right executer, if not found raise CannotBeExecutedError
+        try:
+            test_executer = self.dict_test_executers[test.get_test_type()]
+        except KeyError:
+            raise CannotBeExecutedError('could not find any TestExecuter for keyword type: {}'.format(test.get_test_type()))
+        result = test_executer.exec_test(test=test)
+        return result
+
+
+class TestExecuter(ABC):
+    @abstractmethod
+    def __init__(self, my_keyword_type: str, executers_dict : Dict[str, TestExecuter]) -> None:
+        self.my_keyword_type = my_keyword_type
+        executers_dict[self.my_keyword_type] = self
+
+    @abstractmethod
+    def exec_test(self, test: Test) -> bool:
+        raise NotImplementedError()
+
+
+class DlepTestExecuter(TestExecuter):
+    def __init__(self, executers_dict: Dict[str, TestExecuter]) -> None:
+        super().__init__(my_keyword_type=DLEP_KEYWORD)
+        executers_dict[self.my_keyword_type] = self
+
+    def exec_test(self, test: Test) -> bool:
+        '''returns if test pass/fail (True/False)'''
+        return True
+
+
+class SnmpTestExecuter(TestExecuter):
+    def __init__(self, executers_dict: Dict[str, TestExecuter]) -> None:
+        super().__init__(my_keyword_type=SNMP_KEYWORD)
+        executers_dict[self.my_keyword_type] = self
+
+    def exec_test(self, test: Test) -> bool:
+        '''returns if test pass/fail (True/False)'''
         return True
