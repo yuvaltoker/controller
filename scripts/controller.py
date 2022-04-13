@@ -63,9 +63,7 @@ def configure_logger_logging(logging_level: int) -> None:
     logger.addHandler(console_handler)
 
 def get_files_to_list(path: str) -> List[str]:
-    return glob.glob(path)
-    
-    
+    return glob.glob(path)   
 
 # create the next list from /tests/ path:
 # [path1, path2, path3, ..., pathN]
@@ -152,25 +150,6 @@ def pdfs_ready_event_handler() -> str:
     logger.info(message)
     return flags[1]['pdf_link']
 
-# input: dict of parsed files
-# picks test files by the list of files given from app (in mongoDB 'Configuration' collection, in 'ConfigType' = 'TestConfig')
-def pick_chosen_tests(parsed_files: Dict[str, TestFile]) -> Dict[str, TestFile]:
-    # getting filtered document by ConfigType, then getting
-    suites_to_run = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {})['SuitesToRun']
-    logger.info(suites_to_run)
-    test_file_executer = TestFilesExecuter(logging_level=logging_level)
-    filtered_test_files = test_file_executer.get_requested_test_files_dict(all_files=parsed_files, paths=suites_to_run)
-    return filtered_test_files
-
-def run_test() -> str:
-    json_document_result_example = '''{
-	    "name": "Check if the signal Peer_Offer includes data item Peer_Type",
-	    "result": "Pass/Fail"
-    }
-    '''
-    uid = mdb_handler.insert_document('Test Results', loads(json_document_result_example))
-    return uid
-
 def run_tests(test_files_handler: TestFilesHandler) -> None:
     # getting filtered document by ConfigType, then getting
     chosen_paths = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {})['SuitesToRun']
@@ -198,10 +177,8 @@ def controller_flow() -> None:
     setup_ready_event_handler()
     time.sleep(TIME_DELAY)
     run_tests(test_files_handler=test_files_handler)
-    chosen_test_files = pick_chosen_tests(parsed_testfile_list)
-    #run_tests(3)
-    #time.sleep(TIME_DELAY)
-    #all_results_ready()
+    time.sleep(TIME_DELAY)
+    all_results_ready()
 
 def main() -> None:
     flags[1] = {'setup_ready' : False, 'pdfs_ready' : False, 'pdf_link' : ''}
