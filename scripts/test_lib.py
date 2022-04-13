@@ -5,7 +5,7 @@ from typing import Any, Dict, Tuple
 from mongodb_handler import MongodbHandler
 from abc import ABC, abstractmethod
 
-from scripts.test_agent_lib import DLEP_KEYWORD, SNMP_KEYWORD
+from test_agent_lib import DLEP_KEYWORD, SNMP_KEYWORD
 
 class Test(ABC):
     name: str

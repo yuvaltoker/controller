@@ -3,14 +3,12 @@
 #######################################
 
 import logging
-from logging import handlers
 from typing import Any, Dict, List
 # for easy use of rabbitmq
 from rabbitmq_handler import RabbitmqHandler
 # for easy read/write on mongodb
 from mongodb_handler import MongodbHandler
 from json import dumps, loads
-from tests import TestFile
 # for event handling
 from waiting import wait
 # for more convenient storing dictionaries
@@ -18,7 +16,7 @@ from pandas import DataFrame
 # for background waiting function, use multiproccessing
 from multiprocessing import Process, Manager
 # for testing with TestFilesParser
-from test_agent_lib import TestFilesExecuter, TestFilesHandler, TestFilesParser
+from test_agent_lib import TestFilesHandler
 # for reading files from path
 import glob
 # for delay use

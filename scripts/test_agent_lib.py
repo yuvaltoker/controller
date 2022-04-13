@@ -3,12 +3,11 @@ from abc import ABC, abstractmethod
 import os
 from time import time
 from typing import Any, Callable, Dict, List, Optional
-from unicodedata import name
 
 from simplejson import loads
-from scripts.mongodb_handler import MongodbHandler
-from scripts.rabbitmq_handler import RabbitmqHandler
-from scripts.tests import TestFile, Test
+from mongodb_handler import MongodbHandler
+from rabbitmq_handler import RabbitmqHandler
+from test_lib import TestFile, Test
 import logging
 
 class CannotBeParsedError(Exception):
