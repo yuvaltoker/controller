@@ -47,7 +47,6 @@ def configure_logger_logging(logger, logging_level, logging_file) -> None:
 TEST_LINES_LENGTH = 3
 TIME_DELAY = int(os.getenv('TIME_DELAY'))
 
-
 class TestFilesHandler:
     '''class handling parsing and executing test files, acts as master agent when it comes to test files'''
     def __init__(self, logging_level, logging_file = None) -> None: 
@@ -379,7 +378,17 @@ class SnmpTestExecuter(TestExecuter):
     def __init__(self, executers_dict: Dict[str, TestExecuter]) -> None:
         super().__init__(my_keyword_type=SNMP_KEYWORD)
         executers_dict[self.my_keyword_type] = self
+        self.snmp_version = os.getenv('SNMP_VERSION')
+        self.snmp_community = os.getenv('SNMP_COMMUNITY')
+        self.snmpd_host = os.getenv('SNMPD_HOST')
+        self.snmpd_port = os.getenv('SNMPD_PORT')
 
+    '''example of snmpset/get for future work'''
+    '''under each line, written from where the vars are supposed to be gotten from (supplied by docker-compose or by test class var (comp / test)'''
+    '''snmpset -v2c -c public snmpd:1662 NET-SNMP-TUTORIAL-MIB::nstAgentSubagentObject.0 i $x >> file.log'''
+    '''          |       |         |                         |                          /   \\   '''
+    '''      | comp |  comp  |   comp   |                   test                    | test | test | '''
+    '''snmpget -v2c -c public snmpd:1662 MY-TUTORIAL-MIB::batteryObject.0 >> file.log'''
     def exec_test(self, test: Test) -> bool:
         '''returns if test pass/fail (True/False)'''
         return True
