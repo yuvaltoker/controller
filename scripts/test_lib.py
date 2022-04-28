@@ -8,6 +8,7 @@ DLEP_KEYWORD = 'DLEP'
 SNMP_KEYWORD = 'SNMP'
 
 class Test(ABC):
+    test_type: str
     name: str
     expect: bool = False
     @abstractmethod
@@ -80,7 +81,6 @@ class SnmpTest(Test):
         self.command = ''
         self.mib_type = ''
         self.mib_value = ''
-        self.full_test = ''
 
     def set_oid(self, oid: str) -> None:
         self.oid = oid
