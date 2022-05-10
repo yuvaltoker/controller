@@ -1,8 +1,10 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import os
+from ssl import Purpose
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
+from dataclasses import dataclass, field
 
 from json import loads
 from mongodb_handler import MongodbHandler
@@ -221,7 +223,7 @@ class TestParser(ABC):
                 line=line)
 
     def set_test_name(self,test: Test, line: List[str]) -> None:
-        test.set_name(name=' '.join(line))
+        test.name = ' '.join(line)
         
     def is_keyword_in_dict(self, dict: Dict[str, Any], keyword: str) -> bool:
         return keyword in dict
@@ -247,25 +249,25 @@ class DlepTestParser(TestParser):
         parsers_dict[self.my_keyword_type] = self      
 
     def set_expect(self, test: Test, line: List[str]) -> None:
-        test.set_expect(expect=True)
+        test.expect = True
         # next word after this is 'SIGNAL', which is not a garbage word
         self.cut_next_words(word_list=line, num_of_words=1)
 
     def set_signal(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'SIGNAL' keyword, then the signal itself
-        test.set_signal(signal=line[1])
+        test.signal = line[1]
         # removing the 'SIGNAL' keyword and the signal itself
         self.cut_next_words(word_list=line, num_of_words=2)
 
     def set_to_include(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'TO_INCLUDE' keyword, then 'DATA_ITEM'/'SUB_DATA_ITEM' keyword, then the item/subdataitem to include
-        test.set_include(is_need_to_include='include', item=line[2])
+        test.handle_include(is_need_to_include='include', item=line[2])
         # removing the 'TO_INCLUDE' keyword, the 'DATA_ITEM'/'SUB_DATA_ITEM' keyword, and the item/subdataitem that need to be include
         self.cut_next_words(word_list=line, num_of_words=3)
 
     def set_to_not_include(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'TO_NOT_INCLUDE' keyword, then 'DATA_ITEM'/'SUB_DATA_ITEM' keyword, then the item/subdataitem to not include
-        test.set_include(is_need_to_include='not include', item=line[1])
+        test.handle_include(is_need_to_include='not include', item=line[1])
         # removing the 'TO_NOT_INCLUDE' keyword, the 'DATA_ITEM'/'SUB_DATA_ITEM' keyword, and the item/subdataitem that need to not be include
         self.cut_next_words(word_list=line, num_of_words=3)
 
@@ -282,31 +284,31 @@ class SnmpTestParser(TestParser):
         parsers_dict[self.my_keyword_type] = self
 
     def set_expect(self, test: Test, line: List[str]) -> None:
-        test.set_expect(expect=True)
+        test.expect = True
         # next word after this is 'OID', which is not a garbage word
         self.cut_next_words(word_list=line, num_of_words=1)
 
     def set_oid(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'OID' keyword, then the oid itself
-        test.set_oid(oid=line[1])
+        test.oid=line[1]
         # removing the 'OID' keyword and the oid itself
         self.cut_next_words(word_list=line, num_of_words=2)
 
     def set_to_be(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'TO_BE' keyword, then the readonly/settable
-        test.set_command(command=line[1])
+        test.command = line[1]
         # removing the 'TO_BE' keyword and the readonly/settable
         self.cut_next_words(word_list=line, num_of_words=2)
 
     def set_mib_type(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'OF_TYPE' keyword, then the type itself
-        test.set_mib_type(mib_type=line[1])
+        test.mib_type = line[1]
         # removing the 'OF_TYPE' keyword and the type itself
         self.cut_next_words(word_list=line, num_of_words=2)
 
     def set_mib_value(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'WITH_VALUE' keyword, then the value expression itself
-        test.set_mib_value(mib_value=line[1])
+        test.mib_value = line[1]
         # removing the 'WITH_VALUE' keyword and the value expression itself
         self.cut_next_words(word_list=line, num_of_words=2)
 
@@ -373,15 +375,31 @@ class DlepTestExecuter(TestExecuter):
         '''returns if test pass/fail (True/False)'''
         return True
 
+@dataclass
+class SnmpQuery:
+    '''object for easy managment of snmp get/set query'''
+    command: str
+    object_id: str
+    mib_type: str
+    mib_value: str
+
+@dataclass
+class SnmpConfiguration:
+    '''object for easy and readable snmp configuration'''
+    version: str
+    community: str
+    host: str
+    port: str
 
 class SnmpTestExecuter(TestExecuter):
     def __init__(self, executers_dict: Dict[str, TestExecuter]) -> None:
         super().__init__(my_keyword_type=SNMP_KEYWORD)
         executers_dict[self.my_keyword_type] = self
-        self.snmp_version = os.getenv('SNMP_VERSION')
-        self.snmp_community = os.getenv('SNMP_COMMUNITY')
-        self.snmpd_host = os.getenv('SNMPD_HOST')
-        self.snmpd_port = os.getenv('SNMPD_PORT')
+        self.snmp_conf = SnmpConfiguration(version=os.getenv('SNMP_VERSION'),
+            community=os.getenv('SNMP_COMMUNITY'),
+            host=os.getenv('SNMPD_HOST'),
+            port=os.getenv('SNMPD_PORT'))
+        self.command_dict = {'get' : self.send_snmpget, 'set' : self.send_snmpset}
 
     '''example of snmpset/get for future work'''
     '''under each line, written from where the vars are supposed to be gotten from (supplied by docker-compose or by test class var (comp / test)'''
@@ -391,4 +409,32 @@ class SnmpTestExecuter(TestExecuter):
     '''snmpget -v2c -c public snmpd:1662 MY-TUTORIAL-MIB::batteryObject.0 >> file.log'''
     def exec_test(self, test: Test) -> bool:
         '''returns if test pass/fail (True/False)'''
+        # command can be send_snmpget/send_snmpset
+        command_function = self.command_dict[test.get_command()]
+        
         return True
+
+    def send_snmpset(self, snmp_conf: SnmpConfiguration ,snmp_query : SnmpQuery) -> bool:
+        pass
+
+    def send_snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query : SnmpQuery) -> bool:
+        pass
+
+    def snmpsetFunction(objectOID, new_value):
+    for (errorIndication,
+     errorStatus,
+     errorIndex,
+     varBinds) in setCmd(SnmpEngine(),
+                          CommunityData('public', mpModel=1),
+                          UdpTransportTarget(('snmpd', 1662)),
+                          ContextData(),
+                          ObjectType(ObjectIdentity(objectOID), Integer32(new_value)),
+                          lookupMib=False):
+
+     if errorIndication:
+         print(errorIndication)
+         break
+     elif errorStatus:
+         print('%s at %s' % (errorStatus.prettyPrint(),
+                             errorIndex and varBinds[int(errorIndex) - 1][0] or '?'))
+         break

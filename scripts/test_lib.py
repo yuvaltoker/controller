@@ -1,50 +1,36 @@
 # this file will include- TestFile, DlepTest, SnmpTest
 
 # for easy read/write on mongodb
+from dataclasses import dataclass, field
 from typing import Any, Dict, Tuple
 from abc import ABC, abstractmethod
 
 DLEP_KEYWORD = 'DLEP'
 SNMP_KEYWORD = 'SNMP'
 
+@dataclass
 class Test(ABC):
-    test_type: str
-    name: str
-    expect: bool = False
-    @abstractmethod
-    def __init__(self, test_type: str) -> None:
-        self.test_type = test_type
+    test_type: str = field(default='', init=True)
+    name: str = field(default='', init=False)
+    expect: bool = field(default=False, init=False)
 
     # the meaning of the next function is when creating new type of test (@DlepTest, @SnmpTest, etc...) this function has to be override
     @abstractmethod
     def check_if_test_ready(self) -> None:
-        """An Excepton will be raised when child of Test will not implement this method"""
+        '''An Excepton will be raised when child of Test will not implement this method'''
         raise NotImplementedError()
 
-    def get_test_type(self) -> str:
-        return self.test_type
 
-    def set_name(self, name: str) -> None:
-        self.name = name
-
-    def set_expect(self, expect: bool) -> None:
-        self.expect = expect
-
-
+@dataclass
 class DlepTest(Test):
-    def __init__(self, test_type: str) -> None:
-        super().__init__(test_type)
-        self.signal = ''
-        self.is_signal_need_to_include = ''
-        self.is_data_item_need_to_include = ''
-        # whether to include or to not include, what item?
-        self.data_item = ''
-        self.sub_data_item = ''
+    signal: str = field(default='', init=False)
+    is_signal_need_to_include: str = field(default='', init=False)
+    is_data_item_need_to_include: str = field(default='', init=False)
+    # whether to include or to not include, what item/data_item?
+    data_item: str = field(default='', init=False)
+    sub_data_item: str = field(default='', init=False)
 
-    def set_signal(self, signal: str) -> None:
-        self.signal = signal
-
-    def set_include(self, is_need_to_include: str, item: str) -> None:
+    def handle_include(self, is_need_to_include: str, item: str) -> None:
         if self.is_signal_need_to_include == '':
             self.is_signal_need_to_include = is_need_to_include
             self.data_item = item
@@ -72,30 +58,19 @@ class DlepTest(Test):
             return True
         return False
     
-
+@dataclass
 class SnmpTest(Test):
-    def __init__(self, test_type: str) -> None:
-        super().__init__(test_type)
-        self.oid = ''
-        # command can be READONLY/SETTABLE (get/set)
-        self.command = ''
-        self.mib_type = ''
-        self.mib_value = ''
-
-    def set_oid(self, oid: str) -> None:
-        self.oid = oid
+    oid: str = field(default='', init=False)
+    # command can be READONLY/SETTABLE (get/set)
+    command: str = field(default='', init=False)
+    mib_type: str = field(default='', init=False)
+    mib_value: str = field(default='', init=False)
 
     def set_command(self, command: str) -> None:
         if command == 'READONLY':
             self.command = 'get'
         elif command == 'SETTABLE':
             self.command = 'set'
-
-    def set_mib_type(self, mib_type: str) -> None:
-        self.mib_type = mib_type
-
-    def set_mib_value(self, mib_value: str) -> None:
-        self.mib_value = mib_value
 
     def test_to_json(self) -> Dict[str, Any]:
         json_test = {}
