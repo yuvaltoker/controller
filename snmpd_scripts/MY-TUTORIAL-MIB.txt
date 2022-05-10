@@ -1,0 +1,122 @@
+MY-TUTORIAL-MIB DEFINITIONS ::= BEGIN
+
+-- A Comment!      
+                  
+--           ----------                                                                                                 ----------           --
+--              ----------                                                                                           ----------              --
+--                 ----------                                                                                     ----------                 --
+--                    ----------                                                                               ----------                    --
+--                       ----------                                                                         ----------                       --
+--                          ----------                                                                   ----------                          --
+--                           -------------------------------------------------------------------------------------                           --
+----                         -- Before I start, the original mib file was taken from Net-Snmp subagent          --                         ----
+----                         -- tutorial (search it on google), there in the "get the code" part                --                         ----
+----                         -- there's a mibfile called "NET-SNMP-TUTORIAL-MIB.txt".                           --                         ----
+----                         -- This file (the file you are currently reading from) is the same one,            --                         ----
+----                         -- but with some changes which had done in an attempt to adjust the whole tutorial --                         ----
+----                         -- to my task.                                                                     --                         ----
+--                           -------------------------------------------------------------------------------------                           --
+--                            ----------                                                               ----------                            --
+--                               ----------                                                         ----------                               --
+--                                  ----------                                                   ----------                                  --
+--                                     ----------                                             ----------                                     --
+--                                        ----------                                       ----------                                        --
+--                                           ----------                                 ----------                                           --
+
+
+
+-- IMPORTS: Include definitions from other mibs here, which is always
+-- the first item in a MIB file.
+IMPORTS
+	netSnmpExamples		              FROM NET-SNMP-EXAMPLES-MIB
+	OBJECT-TYPE, Integer32,
+	MODULE-IDENTITY, NOTIFICATION-TYPE    FROM SNMPv2-SMI
+	MODULE-COMPLIANCE, OBJECT-GROUP       FROM SNMPv2-CONF;
+
+
+--
+-- A brief description and update information about this mib.
+--
+netSnmpTutorialMIB MODULE-IDENTITY
+    LAST-UPDATED "200205290000Z"            -- 29 May 2002, midnight
+    ORGANIZATION "net-snmp"
+    CONTACT-INFO "postal:   Wes Hardaker
+                            P.O. Box 382
+                            Davis CA  95617
+
+		  email:    net-snmp-coders@lists.sourceforge.net
+                 "
+    DESCRIPTION  "A simple mib for demonstration purposes.
+                 "
+    ::= { netSnmpExamples 4 }
+
+
+
+-- Define typical mib nodes, like where the objects are going to lie.
+-- we'll prefix everything in this mib with nst (net snmp tutorial)
+nstMIBObjects     OBJECT IDENTIFIER ::= { netSnmpTutorialMIB 1 }
+nstMIBConformance OBJECT IDENTIFIER ::= { netSnmpTutorialMIB 2 }
+
+
+
+-- define 3 objects, which will all be implemented in different ways
+-- within the tutorial.
+
+nstAgentModules   OBJECT IDENTIFIER ::= { nstMIBObjects 1 }
+
+
+batteryObject OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"This is a nice description. Also this is the mib that represent
+                               a modem's channel.
+          But first of all, and last of all, THIS IS A NICE DESCRIPTION"
+    DEFVAL { 1 }
+    ::= { nstAgentModules 4 }
+
+channelObject OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"This is a nice description. Also this is the mib that represent
+                                a modem's battery. 
+          But first of all, and last of all, THIS IS A NICE DESCRIPTION"
+    DEFVAL { 2 }
+    ::= { nstAgentModules 5 }
+
+currentObject OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "This is a nice description. Also this is the mib that represent
+                          the current modem's id.
+          But first of all, and last of all, THIS IS A NICE DESCRIPTION"
+    DEFVAL { 2 }
+    ::= { nstAgentModules 6 }
+
+
+isAliveObject OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"This is a nice description. Also this is the mib that represent 
+                    the modem's state - ALIVE/DYING/DEAD.
+          So, first of all, and last of all, THIS IS A NICE DESCRIPTION"
+    DEFVAL { "ALIVE" }
+    ::= { nstAgentModules 7 }
+
+
+--nstAgentTrapObject NOTIFICATION-TYPE
+--	STATUS current
+--        OBJECTS { sysLocation }
+--	DESCRIPTION "Just a test notification"
+--        ::= { nstAgentModules 8 }
+
+-- END:  Don't forget this!
+END
+

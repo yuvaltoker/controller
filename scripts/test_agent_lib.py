@@ -376,14 +376,6 @@ class DlepTestExecuter(TestExecuter):
         return True
 
 @dataclass
-class SnmpQuery:
-    '''object for easy managment of snmp get/set query'''
-    command: str
-    object_id: str
-    mib_type: str
-    mib_value: str
-
-@dataclass
 class SnmpConfiguration:
     '''object for easy and readable snmp configuration'''
     version: str
@@ -406,18 +398,38 @@ class SnmpTestExecuter(TestExecuter):
     '''snmpset -v2c -c public snmpd:1662 NET-SNMP-TUTORIAL-MIB::nstAgentSubagentObject.0 i $x >> file.log'''
     '''          |       |         |                         |                          /   \\   '''
     '''      | comp |  comp  |   comp   |                   test                    | test | test | '''
+    # snmpget -v2c -c public 192.168.16.10:1662 1.3.6.1.4.1.8072.2.4.1.1.4.0
     '''snmpget -v2c -c public snmpd:1662 MY-TUTORIAL-MIB::batteryObject.0 >> file.log'''
     def exec_test(self, test: Test) -> bool:
         '''returns if test pass/fail (True/False)'''
         # command can be send_snmpget/send_snmpset
-        command_function = self.command_dict[test.get_command()]
+        command_function = self.command_dict[test.command]
+        command_function(snmp_conf=self.snmp_conf, test=test)
+
         
         return True
 
-    def send_snmpset(self, snmp_conf: SnmpConfiguration ,snmp_query : SnmpQuery) -> bool:
+    def send_snmpset(self, snmp_conf: SnmpConfiguration, test: Test) -> bool:
+        for (errorIndication, errorStatus, errorIndex, varBinds) in setCmd(SnmpEngine(),
+            CommunityData('public', mpModel=1),
+            UdpTransportTarget(('snmpd', 1662)),
+            ContextData(),
+            ObjectType(ObjectIdentity(objectOID), Integer32(new_value)),
+            lookupMib=False):
+            if errorIndication:
+                print(errorIndication)
+                break
+            elif errorStatus:
+                print('%s at %s' % (errorStatus.prettyPrint(),
+                    errorIndex and varBinds[int(errorIndex) - 1][0] or '?'))
+                break
+
+
+    def send_snmpget(self, snmp_conf: SnmpConfiguration, test: Test) -> bool:
         pass
 
-    def send_snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query : SnmpQuery) -> bool:
+    def proccess_value(self, value: str, test: Test) -> bool:
+        '''proccessing the returned value of snmpget/snmpset command'''
         pass
 
     def snmpsetFunction(objectOID, new_value):
