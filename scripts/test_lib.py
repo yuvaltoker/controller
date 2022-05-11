@@ -10,7 +10,7 @@ SNMP_KEYWORD = 'SNMP'
 
 @dataclass
 class Test(ABC):
-    test_type: str = field(default='', init=True)
+    type: str = field(default='', init=True)
     name: str = field(default='', init=False)
     expect: bool = field(default=False, init=False)
 
@@ -40,7 +40,7 @@ class DlepTest(Test):
 
     def test_to_json(self) -> Dict[str, Any]:
         json_test = {}
-        json_test['Type'] = self.test_type
+        json_test['Type'] = self.type
         json_test['Name'] = self.name
         json_test['Test'] = {'Signal' : self.signal}
         json_test['Test'][self.is_signal_need_to_include] = {'Data Item' : self.data_item}
@@ -65,16 +65,19 @@ class SnmpTest(Test):
     command: str = field(default='', init=False)
     mib_type: str = field(default='', init=False)
     mib_value: str = field(default='', init=False)
+    result: bool = field(default='', init=False)
 
     def set_command(self, command: str) -> None:
         if command == 'READONLY':
-            self.command = 'get'
+            self.command = 'only_get'
         elif command == 'SETTABLE':
             self.command = 'set'
+        elif command == 'READABLE':
+            self.command = 'get'
 
     def test_to_json(self) -> Dict[str, Any]:
         json_test = {}
-        json_test['Type'] = self.test_type
+        json_test['Type'] = self.type
         json_test['Name'] = self.name
         json_test['Test'] = {'Oid' : self.oid, 'To be' : self.command, 'Mib type' : self.mib_type}
         if self.mib_value != '':
@@ -85,7 +88,8 @@ class SnmpTest(Test):
         return self.test_to_json()
 
     def check_if_test_ready(self) -> bool:
-        if self.expect and self.name != '' and self.oid != '' and self.command != '' and self.mib_type != '':
+        # if command is READONLY/SETTABLE we will need to try to set the mib on both cases to check, if READABLE only try to get
+        if self.expect and self.name != '' and self.oid != '' and (self.command == 'READABLE' or self.command != '' and self.mib_type != ''):
             return True
         return False
 

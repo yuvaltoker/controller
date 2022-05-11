@@ -29,9 +29,11 @@ RUN pip3 install pymongo pandas
 ##################################
 
 RUN apt-get install -y build-essential
+RUN apt-get update
 RUN apt-get install -y snmp snmpd libsnmp-dev snmp-mibs-downloader
 RUN apt-get install -y gcc python-dev
-RUN pip3 install easysnmp
+# because of issue with easysnmp with python 3.7+ versions, the next version of easysnmp correct those issues
+RUN pip3 install easysnmp==0.2.6a1
 
 #####################################
 #      controller dependencies      #
@@ -53,17 +55,17 @@ RUN chmod +x /wait
 RUN mkdir /controller-scripts
 
 ## Add your application to the docker image (comment out in case of working with volume)
-#ADD ./scripts/controller.py /controller-scripts
-#ADD ./scripts/rabbitmq_handler.py /controller-scripts
-#ADD ./scripts/mongodb_handler.py /controller-scripts
-#ADD ./scripts/test_agent_lib.py /controller-scripts
-#ADD ./scripts/test_lib.py /controller-scripts
+ADD ./scripts/controller.py /controller-scripts
+ADD ./scripts/rabbitmq_handler.py /controller-scripts
+ADD ./scripts/mongodb_handler.py /controller-scripts
+ADD ./scripts/test_agent_lib.py /controller-scripts
+ADD ./scripts/test_lib.py /controller-scripts
 
-#RUN chmod +x /controller-scripts/controller.py
+RUN chmod +x /controller-scripts/controller.py
 
 ## Add your testing applications here (comment out in case of not testing specific file)
-ADD ./scripts/testing_class.py /controller-scripts
-RUN chmod +x /controller-scripts/testing_class.py
+#ADD ./scripts/testing_class.py /controller-scripts
+#RUN chmod +x /controller-scripts/testing_class.py
 
 ## Launch the wait tool and then your application
-CMD /wait && python3 /controller-scripts/testing_class.py
+CMD /wait && python3 /controller-scripts/controller.py

@@ -1,10 +1,11 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from multiprocessing.sharedctypes import Value
 import os
-from ssl import Purpose
 import time
 from typing import Any, Callable, Dict, List
 from dataclasses import dataclass, field
+import easysnmp
 
 from json import loads
 from mongodb_handler import MongodbHandler
@@ -138,7 +139,7 @@ class TestFilesParser:
             # when lines_counter reach 3, it mean we have a whole test ready to be read
             current_test_lines = []
             for line in file_lines:
-                if line == '':
+                if line == '' or line[0] == '#':
                     continue
                 word_list = line.split(' ')
                 # removing all the '' in the list, it'll raise an exception when '' will not be exist anymore
@@ -349,9 +350,9 @@ class TestFilesExecuter:
         '''returns if test pass/fail (True/False)'''
         # get the right executer, if not found raise CannotBeExecutedError
         try:
-            test_executer = self.dict_test_executers[test.get_test_type()]
+            test_executer = self.dict_test_executers[test.type]()
         except KeyError:
-            raise CannotBeExecutedError('could not find any TestExecuter for keyword type: {}'.format(test.get_test_type()))
+            raise CannotBeExecutedError('could not find any TestExecuter for keyword type: {}'.format(test.type))
         result = test_executer.exec_test(test=test)
         return result
 
@@ -378,19 +379,21 @@ class DlepTestExecuter(TestExecuter):
 @dataclass
 class SnmpConfiguration:
     '''object for easy and readable snmp configuration'''
-    version: str
-    community: str
-    host: str
-    port: str
+    auth_pass: str = field(init=True)
+    priv_pass: str = field(init=True)
+    user_name: str = field(init=True)
+    version: str = field(init=True)
+    snmpd_host: str = field(init=True)
 
 class SnmpTestExecuter(TestExecuter):
     def __init__(self, executers_dict: Dict[str, TestExecuter]) -> None:
         super().__init__(my_keyword_type=SNMP_KEYWORD)
         executers_dict[self.my_keyword_type] = self
-        self.snmp_conf = SnmpConfiguration(version=os.getenv('SNMP_VERSION'),
-            community=os.getenv('SNMP_COMMUNITY'),
-            host=os.getenv('SNMPD_HOST'),
-            port=os.getenv('SNMPD_PORT'))
+        self.snmp_conf = SnmpConfiguration(auth_pass = os.getenv('AUTH_PASS'),
+            priv_pass = os.getenv('PRIV_PASS'),
+            user_name = os.getenv('USER_NAME'),
+            version=os.getenv('SNMP_VERSION'),
+            snmpd_host=os.getenv('SNMPD_HOST'))
         self.command_dict = {'get' : self.send_snmpget, 'set' : self.send_snmpset}
 
     '''example of snmpset/get for future work'''
@@ -404,49 +407,46 @@ class SnmpTestExecuter(TestExecuter):
         '''returns if test pass/fail (True/False)'''
         # command can be send_snmpget/send_snmpset
         command_function = self.command_dict[test.command]
-        command_function(snmp_conf=self.snmp_conf, test=test)
+        value = command_function(snmp_conf=self.snmp_conf, test=test)
+        test.result = self.proccess_value(value=value, test=test)
+        return test.result
 
+    def send_snmpset(self, snmp_conf: SnmpConfiguration, test: Test) -> str:
+        '''setting the mib with easysnmp library'''
+        '''for more about easysnmplib see https://easysnmp.readthedocs.io/en/latest/easy_api.html'''
+        easysnmp.snmp_set(test.oid,
+            test.mib_value,
+            test.mib_type,
+            hostname = snmp_conf.snmpd_host,
+            version = snmp_conf.version, 
+            security_level = 'auth_with_privacy',
+            security_username = snmp_conf.user_name, 
+            privacy_protocol = 'AES',
+            privacy_password = snmp_conf.priv_pass,
+            auth_protocol = 'SHA',
+            auth_password = snmp_conf.auth_pass)
+            # sorry for the long and shitty non-pythonic use of more than 3 arguments... here is a potato
+        # return snmpget value for checking the value afterwards
+        mib_value = self.send_snmpget(snmp_conf=snmp_conf, test=test)
+        return mib_value
         
-        return True
-
-    def send_snmpset(self, snmp_conf: SnmpConfiguration, test: Test) -> bool:
-        for (errorIndication, errorStatus, errorIndex, varBinds) in setCmd(SnmpEngine(),
-            CommunityData('public', mpModel=1),
-            UdpTransportTarget(('snmpd', 1662)),
-            ContextData(),
-            ObjectType(ObjectIdentity(objectOID), Integer32(new_value)),
-            lookupMib=False):
-            if errorIndication:
-                print(errorIndication)
-                break
-            elif errorStatus:
-                print('%s at %s' % (errorStatus.prettyPrint(),
-                    errorIndex and varBinds[int(errorIndex) - 1][0] or '?'))
-                break
-
-
-    def send_snmpget(self, snmp_conf: SnmpConfiguration, test: Test) -> bool:
-        pass
-
+    def send_snmpget(self, snmp_conf: SnmpConfiguration, test: Test) -> str:
+        '''getting the mib with easysnmp library'''
+        '''for more about easysnmplib see https://easysnmp.readthedocs.io/en/latest/easy_api.html'''
+        mib_object = easysnmp.snmp_get(test.oid,
+            hostname=snmp_conf.snmpd_host,
+            version=snmp_conf.version, 
+            security_level = 'auth_with_privacy',
+            security_username = snmp_conf.user_name, 
+            privacy_protocol = 'AES',
+            privacy_password = snmp_conf.priv_pass,
+            auth_protocol = 'SHA',
+            auth_password = snmp_conf.auth_pass)
+            # as written above, sorry for the long and shitty non-pythonic use of more than 3 arguments... here is a potato
+        # return snmpget value
+        print(f'mib type: {mib_object.type}, mib_value: {mib_object.value}')
+        return mib_object.value
+        
     def proccess_value(self, value: str, test: Test) -> bool:
         '''proccessing the returned value of snmpget/snmpset command'''
-        pass
-
-    def snmpsetFunction(objectOID, new_value):
-    for (errorIndication,
-     errorStatus,
-     errorIndex,
-     varBinds) in setCmd(SnmpEngine(),
-                          CommunityData('public', mpModel=1),
-                          UdpTransportTarget(('snmpd', 1662)),
-                          ContextData(),
-                          ObjectType(ObjectIdentity(objectOID), Integer32(new_value)),
-                          lookupMib=False):
-
-     if errorIndication:
-         print(errorIndication)
-         break
-     elif errorStatus:
-         print('%s at %s' % (errorStatus.prettyPrint(),
-                             errorIndex and varBinds[int(errorIndex) - 1][0] or '?'))
-         break
+        return True
