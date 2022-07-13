@@ -317,7 +317,7 @@ class TestFilesExecuter:
     def __init__(self, logging_level, logging_file = None) -> None: 
         # when adding new type of TestExecuter's child, add the class' name here
         self.list_test_executer_types = {DlepTestExecuter, SnmpTestExecuter}
-        # here will be saved dict of [str(keyword), Testexecuter(child)], for example {'DLEP', DlepTestExecuter}
+        # here will be saved dict of [str(keyword), Testexecuter(child)], for example {'DLEP', dlepTestExecuter}
         self.dict_test_executers = {}
         # fill the above dict, by calling the init func the test_executer child class will register itself to the dict
         for executer_class in self.list_test_executer_types:
@@ -350,7 +350,7 @@ class TestFilesExecuter:
         '''returns if test pass/fail (True/False)'''
         # get the right executer, if not found raise CannotBeExecutedError
         try:
-            test_executer = self.dict_test_executers[test.type]()
+            test_executer = self.dict_test_executers[test.type]
         except KeyError:
             raise CannotBeExecutedError('could not find any TestExecuter for keyword type: {}'.format(test.type))
         result = test_executer.exec_test(test=test)
