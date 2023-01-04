@@ -57,6 +57,9 @@ class DlepTest(Test):
                 return False
             return True
         return False
+
+    def get_test_type(self) -> str:
+        return 'DLEP'
     
 @dataclass
 class SnmpTest(Test):
@@ -88,6 +91,9 @@ class SnmpTest(Test):
         if self.expect and self.name != '' and self.oid != '' and self.command != '' and self.mib_type != '':
             return True
         return False
+
+    def get_test_type(self) -> str:
+        return 'SNMP'
 
 
 class TestFile:

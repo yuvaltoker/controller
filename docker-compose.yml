@@ -26,8 +26,8 @@ services:
                     - SNMPD_HOST=snmpd
                     - SNMPD_PORT=1662
                 volumes:
-                #    - /home/user2/work/idf/controller/scripts:/controller-scripts
-                    - /home/user2/work/idf/controller/tests:/tests 
+                #    - /home/user2/work/controller/scripts:/controller-scripts
+                    - /home/user2/work/controller/tests:/tests 
         app:
                 hostname: app
                 image: samyon196/rri-app-stub:0.0.1

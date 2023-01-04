@@ -420,6 +420,7 @@ class SnmpTestExecuter(TestExecuter):
     def send_snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query : SnmpQuery) -> bool:
         pass
 
+    '''
     def snmpsetFunction(objectOID, new_value):
     for (errorIndication,
      errorStatus,
@@ -438,3 +439,4 @@ class SnmpTestExecuter(TestExecuter):
          print('%s at %s' % (errorStatus.prettyPrint(),
                              errorIndex and varBinds[int(errorIndex) - 1][0] or '?'))
          break
+    '''
