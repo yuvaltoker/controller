@@ -8,8 +8,6 @@ services:
                     dockerfile: ./ctrl-Dockerfile
                 tty: true
                 stdin_open: true
-                #depends_on:
-                #    - rabbitmq
                 networks:
                     - lan
                 environment:
@@ -21,12 +19,7 @@ services:
                     - DB_NAME=rri
                     - TIME_DELAY=2
                     - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
-                    - SNMP_VERSION=v2
-                    - SNMP_COMMUNITY=public
-                    - SNMPD_HOST=snmpd
-                    - SNMPD_PORT=1662
                 volumes:
-                #    - /home/user2/work/controller/scripts:/controller-scripts
                     - /home/user2/work/controller/tests:/tests 
         app:
                 hostname: app
