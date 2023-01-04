@@ -2,10 +2,10 @@ version: "3.8"
 
 services:
         controller:
-                #image: controller_controller
-                build:
-                    context: .
-                    dockerfile: ./ctrl-Dockerfile
+                image: yuvaltoker/controller-stub:0.0.2
+                #build:
+                #    context: .
+                #    dockerfile: ./ctrl-Dockerfile
                 tty: true
                 stdin_open: true
                 networks:
@@ -21,6 +21,7 @@ services:
                     - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
                 volumes:
                     - /home/user2/work/controller/tests:/tests 
+
         app:
                 hostname: app
                 image: samyon196/rri-app-stub:0.0.1
