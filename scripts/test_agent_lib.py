@@ -7,8 +7,8 @@ from typing import Any, Callable, Dict, List
 from dataclasses import dataclass, field
 
 from json import loads
-from mongodb_handler import MongodbHandler
 from rabbitmq_handler import RabbitmqHandler
+from mongodb_handler import MongodbHandler
 from test_lib import TestFile, Test, DLEP_KEYWORD, SNMP_KEYWORD
 import logging
 
@@ -336,7 +336,7 @@ class TestFilesExecuter:
             # name of test-
             test_name = test.name
             # executing the test and getting result-
-            test_result = self.exec_test(test=test)
+            test_result = self.exec_test(test=test, mdb_handler=mdb_handler)
             # creating result json {name : name, result : 'Pass'/'Fail'}
             json_document_result = self.build_result_json(name=test_name, result=test_result)
             result_uid = mdb_handler.insert_document('Test Results', json_document_result)
@@ -345,14 +345,14 @@ class TestFilesExecuter:
             rmq_handler.send('', 'results', str(result_uid))
             time.sleep(TIME_DELAY / 2)
 
-    def exec_test(self, test: Test) -> bool:
+    def exec_test(self, test: Test, mdb_handler: MongodbHandler) -> bool:
         '''returns if test pass/fail (True/False)'''
         # get the right executer, if not found raise CannotBeExecutedError
         try:
             test_executer = self.dict_test_executers[test.get_test_type()]
         except KeyError:
             raise CannotBeExecutedError('could not find any TestExecuter for keyword type: {}'.format(test.get_test_type()))
-        result = test_executer.exec_test(test=test)
+        result = test_executer.exec_test(test=test, mdb_handler=mdb_handler)
         return result
 
 
@@ -362,7 +362,7 @@ class TestExecuter(ABC):
         self.my_keyword_type = my_keyword_type
 
     @abstractmethod
-    def exec_test(self, test: Test) -> bool:
+    def exec_test(self, test: Test, mdb_handler: MongodbHandler) -> bool:
         raise NotImplementedError()
 
 
@@ -371,9 +371,41 @@ class DlepTestExecuter(TestExecuter):
         super().__init__(my_keyword_type=DLEP_KEYWORD)
         executers_dict[self.my_keyword_type] = self
 
-    def exec_test(self, test: Test) -> bool:
+    def exec_test(self, test: Test, mdb_handler: MongodbHandler) -> bool:
         '''returns if test pass/fail (True/False)'''
-        return True
+        has_passed = True
+        message_by_signal = mdb_handler.get_one_filtered_with_fields('DlepMessage', {'MessageType': test.signal}, {})
+
+        # is there is not a signal of test.signal -> failed
+        if message_by_signal is None:
+            return False
+
+
+        # is test has the attribute include
+        if test.is_signal_need_to_include != '':
+            is_include = test.is_signal_need_to_include == 'include'
+            # from the list of data items, is there any data item with 'Name' of test.data_item?
+            all_data_items = message_by_signal['DataItems']
+            correct_data_items = [item for item in all_data_items if hasattr(item, 'Name') and getattr(item, 'Name') == test.data_item]
+            has_data_item = correct_data_items is not None
+            # if both 'include' and has data item or 'not_include' and has not data item
+            # i.e if both true or both false (the opposite of xor)
+            has_passed =  not (is_include ^ has_data_item)
+
+            # is data_item has the attribute include
+            if test.is_data_item_need_to_include != '':
+                is_include = test.is_data_item_need_to_include == 'include'
+                all_sub_data_items = correct_data_items['SubData_items']
+                correct_sub_data_items = [sub_data_item for sub_data_item in all_sub_data_items if hasattr(sub_data_item, 'Name') and getattr(sub_data_item, 'Name') == test.sub_data_item]
+                has_sub_data_item = correct_sub_data_items is not None
+                # if both 'include' and has data item or 'not_include' and has not data item
+                # i.e if both true or both false (the opposite of xor)
+                has_passed =  not (is_include ^ has_data_item)
+
+        
+        return has_passed
+        
+
 
 @dataclass
 class SnmpQuery:
@@ -407,7 +439,7 @@ class SnmpTestExecuter(TestExecuter):
     '''          |       |         |                         |                          /   \\   '''
     '''      | comp |  comp  |   comp   |                   test                    | test | test | '''
     '''snmpget -v2c -c public snmpd:1662 MY-TUTORIAL-MIB::batteryObject.0 >> file.log'''
-    def exec_test(self, test: Test) -> bool:
+    def exec_test(self, test: Test, mdb_handler: MongodbHandler) -> bool:
         '''returns if test pass/fail (True/False)'''
         # command can be send_snmpget/send_snmpset
         command_function = self.command_dict[test.get_command()]
