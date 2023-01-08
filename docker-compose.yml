@@ -127,6 +127,57 @@ services:
             ports:
               - "5555:8080"
 
+        router:
+            image: yuvaltoker/adjusted-dlep:1.2.1
+            tty: true
+            stdin_open: true
+            restart: on-failure
+            depends_on:
+                - mongodb
+                - rabbitmq
+            networks:
+                - lan
+            environment:
+                - IMPLEMENTATION=router
+                - OUT_WRITER=out_db
+                - DISCOVERY_IFACE=eth0
+                - DISCOVERY_INTERVAL=15
+                - HEARTBEAT_INTERVAL=10
+                - EXT_PAUSE=true
+                - EXT_LID=true
+                - PEER_TYPE=im_router
+                - RMQ_HOST=rabbitmq
+                - MONGODB_URL=mongodb://root:example@mongodb:27017
+                - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
+            
+        modem1:
+            image: yuvaltoker/adjusted-dlep:1.2.1
+            tty: true
+            stdin_open: true
+            networks:
+                  - lan
+            environment:
+                - IMPLEMENTATION=modem
+                - DISCOVERY_IFACE=eth0
+                - HEARTBEAT_INTERVAL=10
+                - EXT_PAUSE=true
+                - EXT_LID=true
+                - PEER_TYPE=net_type\;modem\;serial_number\;key
+        
+        modem2:
+            image: yuvaltoker/adjusted-dlep:1.2.1
+            tty: true
+            stdin_open: true
+            networks:
+                  - lan
+            environment:
+                - IMPLEMENTATION=modem
+                - DISCOVERY_IFACE=eth0
+                - HEARTBEAT_INTERVAL=10
+                - EXT_PAUSE=true
+                - EXT_LID=true
+                - PEER_TYPE=net_type\;modem\;serial_number\;key
+
 
 networks:
     lan:
