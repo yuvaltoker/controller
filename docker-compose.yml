@@ -32,16 +32,16 @@ services:
                   MQ_URL: amqp://rabbitmq:5672
                   WAIT_HOSTS: rabbitmq:5672, mongodb:27017
 
-        dlep:
-                hostname: dlep
-                image: samyon196/rri-dlep-stub:0.0.1
-                networks: 
-                  - lan
-                environment:
-                  DB_URL: mongodb://root:example@mongodb:27017
-                  MQ_URL: amqp://rabbitmq:5672
-                  WAIT_TIME_MS: 1003
-                  WAIT_HOSTS: rabbitmq:5672, mongodb:27017
+        #dlep:
+        #        hostname: dlep
+        #        image: samyon196/rri-dlep-stub:0.0.1
+        #        networks: 
+        #          - lan
+        #        environment:
+        #          DB_URL: mongodb://root:example@mongodb:27017
+        #          MQ_URL: amqp://rabbitmq:5672
+        #          WAIT_TIME_MS: 1003
+        #          WAIT_HOSTS: rabbitmq:5672, mongodb:27017
 
         minIO:
                 image:  minio/minio
