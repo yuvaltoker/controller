@@ -45,10 +45,16 @@ class MongodbHandler:
         return list(self.get_collection(collection_name).find({},{"_id":0}))
     # returns a dic with the specific field and values without the id field
     def get_find_one(self, collection_name,field,value):
-        return self.get_collection(collection_name).find_one({field : value},{"_id":0})
+        json_object = None
+        results = self.get_collection(collection_name).find_one({field : value})
+        print('collection - {}, field - {}, value - {}, result - {}'.format(collection_name, field, value, results))
+        if not (results is None):
+            json_object = {key : value for key, value in results.items()}
+        return json_object
     # returns specific fields of document filtered by query {field : value, ...}, currently _id will always be shown
     # note that when an empty list is given in fields, all fields are going to be in the returning dictionary
     def get_one_filtered_with_fields(self, collection_name, query, fields):
+        json_object = None
         # create the next dict: {field1 : 1, field2 : 1, field3 : 1,... fieldN : 1}
         # which means, show each of the fields in fields
         fields_to_show = {field : 1 for field in fields}
@@ -56,7 +62,8 @@ class MongodbHandler:
         if not '_id' in fields:
             fields_to_show['_id'] = 0
         results = self.get_collection(collection_name).find_one(query,fields_to_show)
-        json_object = {key : value for key, value in results.items()}
+        if results is not None:
+            json_object = {key : value for key, value in results.items()}
         return json_object
     def get_jsonOBJ(self, collection_name):
         results=self.get_all_documents(collection_name)

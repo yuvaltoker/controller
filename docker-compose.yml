@@ -2,10 +2,10 @@ version: "3.8"
 
 services:
         controller:
-                image: yuvaltoker/controller-stub:0.0.2
-                #build:
-                #    context: .
-                #    dockerfile: ./ctrl-Dockerfile
+                #image: yuvaltoker/controller-stub:0.0.2
+                build:
+                    context: .
+                    dockerfile: ./ctrl-Dockerfile
                 tty: true
                 stdin_open: true
                 networks:

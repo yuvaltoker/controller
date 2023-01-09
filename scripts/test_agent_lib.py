@@ -255,19 +255,20 @@ class DlepTestParser(TestParser):
 
     def set_signal(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'SIGNAL' keyword, then the signal itself
-        test.signal = line[1]
+        # plus, cutting the "" at the start and at the end of the word
+        test.signal = line[1][1:-1]
         # removing the 'SIGNAL' keyword and the signal itself
         self.cut_next_words(word_list=line, num_of_words=2)
 
     def set_to_include(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'TO_INCLUDE' keyword, then 'DATA_ITEM'/'SUB_DATA_ITEM' keyword, then the item/subdataitem to include
-        test.handle_include(is_need_to_include='include', item=line[2])
+        test.handle_include(is_need_to_include='include', item=line[2][1:-1])
         # removing the 'TO_INCLUDE' keyword, the 'DATA_ITEM'/'SUB_DATA_ITEM' keyword, and the item/subdataitem that need to be include
         self.cut_next_words(word_list=line, num_of_words=3)
 
     def set_to_not_include(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'TO_NOT_INCLUDE' keyword, then 'DATA_ITEM'/'SUB_DATA_ITEM' keyword, then the item/subdataitem to not include
-        test.handle_include(is_need_to_include='not include', item=line[1])
+        test.handle_include(is_need_to_include='not include', item=line[2][1:-1])
         # removing the 'TO_NOT_INCLUDE' keyword, the 'DATA_ITEM'/'SUB_DATA_ITEM' keyword, and the item/subdataitem that need to not be include
         self.cut_next_words(word_list=line, num_of_words=3)
 
@@ -374,8 +375,10 @@ class DlepTestExecuter(TestExecuter):
     def exec_test(self, test: Test, mdb_handler: MongodbHandler) -> bool:
         '''returns if test pass/fail (True/False)'''
         has_passed = True
-        message_by_signal = mdb_handler.get_one_filtered_with_fields('DlepMessage', {'MessageType': test.signal}, {})
-
+        #message_by_signal = mdb_handler.get_all_documents_in_list('DlepMessage')
+        message_by_signal = mdb_handler.get_find_one('DlepMessage', 'MessageType', '{}'.format(test.signal))
+        #message_by_signal = mdb_handler.get_find_one('Configuration', 'MessageType', 'Peer_Discovery')
+        print("aaaaaaaaaaaaaaaa - {}".format(message_by_signal))
         # is there is not a signal of test.signal -> failed
         if message_by_signal is None:
             return False
@@ -395,14 +398,13 @@ class DlepTestExecuter(TestExecuter):
             # is data_item has the attribute include
             if test.is_data_item_need_to_include != '':
                 is_include = test.is_data_item_need_to_include == 'include'
-                all_sub_data_items = correct_data_items['SubData_items']
+                all_sub_data_items = correct_data_items['SubDataItems']
                 correct_sub_data_items = [sub_data_item for sub_data_item in all_sub_data_items if hasattr(sub_data_item, 'Name') and getattr(sub_data_item, 'Name') == test.sub_data_item]
                 has_sub_data_item = correct_sub_data_items is not None
                 # if both 'include' and has data item or 'not_include' and has not data item
                 # i.e if both true or both false (the opposite of xor)
-                has_passed =  not (is_include ^ has_data_item)
+                has_passed =  not (is_include ^ has_sub_data_item)
 
-        
         return has_passed
         
 
