@@ -163,6 +163,7 @@ services:
                 - EXT_PAUSE=true
                 - EXT_LID=true
                 - PEER_TYPE=net_type\;modem\;serial_number\;key
+                - RMQ_HOST=rabbitmq
         
         modem2:
             image: yuvaltoker/adjusted-dlep:1.2.1
@@ -177,6 +178,7 @@ services:
                 - EXT_PAUSE=true
                 - EXT_LID=true
                 - PEER_TYPE=net_type\;modem\;serial_number\;key
+                - RMQ_HOST=rabbitmq
 
 
 networks:
