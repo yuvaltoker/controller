@@ -378,7 +378,6 @@ class DlepTestExecuter(TestExecuter):
         #message_by_signal = mdb_handler.get_all_documents_in_list('DlepMessage')
         message_by_signal = mdb_handler.get_find_one('DlepMessage', 'MessageType', '{}'.format(test.signal))
         #message_by_signal = mdb_handler.get_find_one('Configuration', 'MessageType', 'Peer_Discovery')
-        print("aaaaaaaaaaaaaaaa - {}".format(message_by_signal))
         # is there is not a signal of test.signal -> failed
         if message_by_signal is None:
             return False
@@ -389,18 +388,22 @@ class DlepTestExecuter(TestExecuter):
             is_include = test.is_signal_need_to_include == 'include'
             # from the list of data items, is there any data item with 'Name' of test.data_item?
             all_data_items = message_by_signal['DataItems']
-            correct_data_items = [item for item in all_data_items if hasattr(item, 'Name') and getattr(item, 'Name') == test.data_item]
-            has_data_item = correct_data_items is not None
+            correct_data_items = [item for item in all_data_items if 'Name' in item and item['Name'] == test.data_item]
+            has_data_item = correct_data_items is not None and correct_data_items != []
             # if both 'include' and has data item or 'not_include' and has not data item
             # i.e if both true or both false (the opposite of xor)
             has_passed =  not (is_include ^ has_data_item)
 
             # is data_item has the attribute include
-            if test.is_data_item_need_to_include != '':
+            if has_passed and test.is_data_item_need_to_include != '':
+                if correct_data_items == []:
+                    # situation like this is happenning when consequence of NOT_INCLUDE and then INCLUDE accurs
+                    return False
                 is_include = test.is_data_item_need_to_include == 'include'
-                all_sub_data_items = correct_data_items['SubDataItems']
-                correct_sub_data_items = [sub_data_item for sub_data_item in all_sub_data_items if hasattr(sub_data_item, 'Name') and getattr(sub_data_item, 'Name') == test.sub_data_item]
-                has_sub_data_item = correct_sub_data_items is not None
+                # the [0] thing is becasue we're getting a list containing only the dictionary, so the dict on first index (0)
+                all_sub_data_items = correct_data_items[0]['SubDataItems']
+                correct_sub_data_items = [sub_data_item for sub_data_item in all_sub_data_items if 'Name' in sub_data_item and sub_data_item['Name'] == test.sub_data_item]
+                has_sub_data_item = correct_sub_data_items is not None and correct_sub_data_items != []
                 # if both 'include' and has data item or 'not_include' and has not data item
                 # i.e if both true or both false (the opposite of xor)
                 has_passed =  not (is_include ^ has_sub_data_item)

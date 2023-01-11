@@ -47,7 +47,6 @@ class MongodbHandler:
     def get_find_one(self, collection_name,field,value):
         json_object = None
         results = self.get_collection(collection_name).find_one({field : value})
-        print('collection - {}, field - {}, value - {}, result - {}'.format(collection_name, field, value, results))
         if not (results is None):
             json_object = {key : value for key, value in results.items()}
         return json_object
