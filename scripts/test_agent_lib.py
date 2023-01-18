@@ -459,6 +459,7 @@ class SnmpTestExecuter(TestExecuter):
         if state == 'testing':
             device_ip = 'snmpd'
         # command can be send_snmpget/send_snmpset
+        port = '1662'
         command_function = self.command_dict[test.get_command()]
         
         return True
