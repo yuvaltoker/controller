@@ -65,7 +65,7 @@ class TestFilesHandler:
         '''returns a dict of files which succeeded the parsing as {folder1 : [path1,path2,...], folder2 : [path1,path2,...]}'''
         return self.test_file_parser.get_test_files_arranged_by_folders()
 
-    def execute_tests_files(self, mdb_handler: MongodbHandler, rmq_handler: RabbitmqHandler, test_files_paths: str) -> None:
+    def execute_tests_files(self, mdb_handler: MongodbHandler, rmq_handler: RabbitmqHandler, test_files_paths: str, device_ip: str) -> None:
         '''execute test files'''
         for test_file_path in test_files_paths:
             # currently the app stub is working without the /tests/ in the begginning of the path in Configuration collection.
@@ -73,7 +73,8 @@ class TestFilesHandler:
             test_file = self.test_files['/tests/{}'.format(test_file_path)]
             self.test_file_executer.execute_test_file(mdb_handler=mdb_handler, 
                 rmq_handler=rmq_handler, 
-                test_file=test_file)
+                test_file=test_file,
+                device_ip=device_ip)
 
 
 class TestFilesParser:
@@ -331,13 +332,13 @@ class TestFilesExecuter:
     def build_result_json(self, name: str, result: bool) -> Dict[str, str]:
         return {'name' : name, 'result' : self.dict_of_optional_results[result]}
     
-    def execute_test_file(self, mdb_handler: MongodbHandler, rmq_handler: RabbitmqHandler, test_file: TestFile) -> None:
+    def execute_test_file(self, mdb_handler: MongodbHandler, rmq_handler: RabbitmqHandler, test_file: TestFile, device_ip: str) -> None:
         for test in test_file.tests:
             # handling json result parts:
             # name of test-
             test_name = test.name
             # executing the test and getting result-
-            test_result = self.exec_test(test=test, mdb_handler=mdb_handler)
+            test_result = self.exec_test(test=test, mdb_handler=mdb_handler, device_ip=device_ip)
             # creating result json {name : name, result : 'Pass'/'Fail'}
             json_document_result = self.build_result_json(name=test_name, result=test_result)
             result_uid = mdb_handler.insert_document('Test Results', json_document_result)
@@ -346,14 +347,14 @@ class TestFilesExecuter:
             rmq_handler.send('', 'results', str(result_uid))
             time.sleep(TIME_DELAY / 2)
 
-    def exec_test(self, test: Test, mdb_handler: MongodbHandler) -> bool:
+    def exec_test(self, test: Test, mdb_handler: MongodbHandler, device_ip: str) -> bool:
         '''returns if test pass/fail (True/False)'''
         # get the right executer, if not found raise CannotBeExecutedError
         try:
             test_executer = self.dict_test_executers[test.get_test_type()]
         except KeyError:
             raise CannotBeExecutedError('could not find any TestExecuter for keyword type: {}'.format(test.get_test_type()))
-        result = test_executer.exec_test(test=test, mdb_handler=mdb_handler)
+        result = test_executer.exec_test(test=test, mdb_handler=mdb_handler, device_ip=device_ip)
         return result
 
 
@@ -372,7 +373,7 @@ class DlepTestExecuter(TestExecuter):
         super().__init__(my_keyword_type=DLEP_KEYWORD)
         executers_dict[self.my_keyword_type] = self
 
-    def exec_test(self, test: Test, mdb_handler: MongodbHandler) -> bool:
+    def exec_test(self, test: Test, mdb_handler: MongodbHandler, device_ip: str) -> bool:
         '''returns if test pass/fail (True/False)'''
         has_passed = True
         #message_by_signal = mdb_handler.get_all_documents_in_list('DlepMessage')
@@ -444,8 +445,19 @@ class SnmpTestExecuter(TestExecuter):
     '''          |       |         |                         |                          /   \\   '''
     '''      | comp |  comp  |   comp   |                   test                    | test | test | '''
     '''snmpget -v2c -c public snmpd:1662 MY-TUTORIAL-MIB::batteryObject.0 >> file.log'''
-    def exec_test(self, test: Test, mdb_handler: MongodbHandler) -> bool:
+    # sending snmpget request:
+    # { "method":"GET","destination":"snmpd:1662","oid":"1.3.6.1.4.1.8073.1.1.4.0","name":"bla","type":"snmpRequest","time":"132","hash":"" }
+    # sending snmpset request
+    #{ "method":"SET","destination":"snmpd:1662","oid":"1.3.6.1.4.1.8073.1.1.4.0","name":"bla","type":"snmpRequest","time":"132","hash":"12321", "value":"2", "dataType":"i" }
+    
+    def exec_test(self, test: Test, mdb_handler: MongodbHandler, device_ip: str) -> bool:
         '''returns if test pass/fail (True/False)'''
+        # when testing we want the ip to be the snmpd ip
+        # when on production we want the device_ip to be taken from DB, and that is being handled on controller.py
+        # in other words, when testing we changed device_ip to be snmpd, otherwise we dont change anything 
+        state = os.getenv('STATE')
+        if state == 'testing':
+            device_ip = 'snmpd'
         # command can be send_snmpget/send_snmpset
         command_function = self.command_dict[test.get_command()]
         

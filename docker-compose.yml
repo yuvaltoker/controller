@@ -19,6 +19,9 @@ services:
                     - DB_NAME=rri
                     - TIME_DELAY=2
                     - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
+                    - STATE=testing
+                    # STATE is for distiguishing between 'testing' state and 'production' state, and its purpose is  
+                    # to know where the snmpd is located, in snmpd container (when testing), or on the ip address of the modem (when on production)
                 volumes:
                     - /home/user2/work/controller/tests:/tests 
 
@@ -177,6 +180,26 @@ services:
                 - EXT_PAUSE=true
                 - EXT_LID=true
                 - PEER_TYPE=net_type\;modem\;serial_number\;key
+
+        redis_db:
+            image: redis:latest
+            ports:
+                - "6379"
+            networks:
+                - lan
+            container_name: redis_db  
+            tty: true
+            stdin_open: true
+
+        snmpd:
+            image: yuvaltoker/snmpd:1.0
+            networks:
+                - lan
+            depends_on:
+                - redis_db
+            container_name: snmpd
+            tty: true
+            stdin_open: true
 
 networks:
     lan:
