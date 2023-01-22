@@ -417,7 +417,6 @@ class DlepTestExecuter(TestExecuter):
 @dataclass
 class SnmpQuery:
     '''object for easy managment of snmp get/set query'''
-    command: str
     oid: str
     mib_type: str
     mib_value: str
@@ -470,8 +469,7 @@ class SnmpTestExecuter(TestExecuter):
         port = '1662'
         snmpd_location = '{}:{}'.format(device_ip, port)
         # when creating the snmpquery, the mib_type and mib_value of test is either '' when it is command='get', or with values when command='set'
-        snmp_query = SnmpQuery(test.command,
-            test.get_oid,
+        snmp_query = SnmpQuery(test.get_oid,
             test.mib_type,
             test.mib_value)
         has_passed = self.command_dict[test.command](snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location)
@@ -480,23 +478,44 @@ class SnmpTestExecuter(TestExecuter):
     def snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> bool:
         '''handles the case of command=READABLE'''
         if snmp_query.mib_value != '':
+            '''Expected value should only be on the command READONLY'''
             return False
+        try:
+            mib_value, mib_type = self.send_snmpget(snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location)
+        except Exception as e:
+            return False
+        if snmp_query.mib_type != '' and snmp_query.mib_type != mib_type:
+            return False
+        return True
+        
 
     def snmpset(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> bool:
-        '''handles the case of command=SETABLE'''
-        if snmp_query.mib_value != '':
+        '''handles the case of command=SETTABLE'''
+        if snmp_query.mib_value != '' or snmp_query.mib_type == '':
+            '''Expected value should only be on the command READONLY and SETTABLE should conntain specification of mib_type'''
             return False
+        try:
+            result = self.send_snmpset(snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location)
+        except Exception as e:
+            return False
+        return result
 
     def only_snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> bool:
         '''handles the case of command=READONLY'''
         pass
 
-    def send_snmpset(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> None:
-        mib_object = easysnmp.snmp_set(oid=snmp_query.oid, value=snmp_query.mib_value, data_type=snmp_query.mib_type,
+    # For future use, the snmp_set and snmp_get of easysnmp can throw the following Errors:
+    # EasySNMPTimeoutError, EasySNMPConnectionError, EasySNMPError, EasySNMPNoSuchObjectError, 
+    # EasySNMPNoSuchInstanceError, EasySNMPNoSuchNameError, EasySNMPBadValueError
+    # It's also possible to raise a Python's built-in Exception if the request can't be parsed correctly.
+    def send_snmpset(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> bool:
+        '''snmp_set of easysnmp lib returns True or False'''
+        result = easysnmp.snmp_set(oid=snmp_query.oid, value=snmp_query.mib_value, data_type=snmp_query.mib_type,
             hostname=snmpd_location, version=snmp_conf.version, 
             security_level=snmp_conf.security_level, security_username=snmp_conf.user_name, 
             privacy_protocol=snmp_conf.privacy_protocol, privacy_password=snmp_conf.priv_pass,
             auth_protocol=snmp_conf.auth_protocol, auth_password=snmp_conf.auth_pass)
+        return result
 
     def send_snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> Tuple[str, str]:
         mib_object = easysnmp.snmp_get(oid=snmp_query.oid, hostname=snmpd_location, version=snmp_conf.version, 
