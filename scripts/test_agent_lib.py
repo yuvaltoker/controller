@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import os
 from ssl import Purpose
 import time
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Tuple
 from dataclasses import dataclass, field
 
 from json import loads
@@ -11,6 +11,7 @@ from rabbitmq_handler import RabbitmqHandler
 from mongodb_handler import MongodbHandler
 from test_lib import TestFile, Test, DLEP_KEYWORD, SNMP_KEYWORD
 import logging
+import easysnmp
 
 class CannotBeParsedError(Exception):
     """Custom error which raised when a test/file cannot be parsed"""
@@ -417,27 +418,34 @@ class DlepTestExecuter(TestExecuter):
 class SnmpQuery:
     '''object for easy managment of snmp get/set query'''
     command: str
-    object_id: str
+    oid: str
     mib_type: str
     mib_value: str
 
 @dataclass
 class SnmpConfiguration:
     '''object for easy and readable snmp configuration'''
-    version: str
-    community: str
-    host: str
-    port: str
+    security_level: str
+    privacy_protocol: str
+    auth_protocol: str
+    auth_pass: str
+    priv_pass: str
+    user_name: str
+    version: int
+
 
 class SnmpTestExecuter(TestExecuter):
     def __init__(self, executers_dict: Dict[str, TestExecuter]) -> None:
         super().__init__(my_keyword_type=SNMP_KEYWORD)
         executers_dict[self.my_keyword_type] = self
-        self.snmp_conf = SnmpConfiguration(version=os.getenv('SNMP_VERSION'),
-            community=os.getenv('SNMP_COMMUNITY'),
-            host=os.getenv('SNMPD_HOST'),
-            port=os.getenv('SNMPD_PORT'))
-        self.command_dict = {'get' : self.send_snmpget, 'set' : self.send_snmpset}
+        self.snmp_conf = SnmpConfiguration(auth_pass=os.getenv('AUTH_PASS'),
+            priv_pass=os.getenv('PRIV_PASS'),
+            user_name=os.getenv('USER_NAME'),
+            security_level='auth_with_privacy',
+            privacy_protocol='AES',
+            auth_protocol='SHA',
+            version=3)
+        self.command_dict = {'get' : self.snmpget, 'set' : self.snmpset, 'only_get' : self.only_snmpget}
 
     '''example of snmpset/get for future work'''
     '''under each line, written from where the vars are supposed to be gotten from (supplied by docker-compose or by test class var (comp / test)'''
@@ -460,12 +468,39 @@ class SnmpTestExecuter(TestExecuter):
             device_ip = 'snmpd'
         # command can be send_snmpget/send_snmpset
         port = '1662'
-        command_function = self.command_dict[test.get_command()]
-        
-        return True
+        snmpd_location = '{}:{}'.format(device_ip, port)
+        # when creating the snmpquery, the mib_type and mib_value of test is either '' when it is command='get', or with values when command='set'
+        snmp_query = SnmpQuery(test.command,
+            test.get_oid,
+            test.mib_type,
+            test.mib_value)
+        has_passed = self.command_dict[test.command](snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location)
+        return has_passed
 
-    def send_snmpset(self, snmp_conf: SnmpConfiguration ,snmp_query : SnmpQuery) -> bool:
+    def snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> bool:
+        '''handles the case of command=READABLE'''
+        if snmp_query.mib_value != '':
+            return False
+
+    def snmpset(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> bool:
+        '''handles the case of command=SETABLE'''
+        if snmp_query.mib_value != '':
+            return False
+
+    def only_snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> bool:
+        '''handles the case of command=READONLY'''
         pass
 
-    def send_snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query : SnmpQuery) -> bool:
-        pass
+    def send_snmpset(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> None:
+        mib_object = easysnmp.snmp_set(oid=snmp_query.oid, value=snmp_query.mib_value, data_type=snmp_query.mib_type,
+            hostname=snmpd_location, version=snmp_conf.version, 
+            security_level=snmp_conf.security_level, security_username=snmp_conf.user_name, 
+            privacy_protocol=snmp_conf.privacy_protocol, privacy_password=snmp_conf.priv_pass,
+            auth_protocol=snmp_conf.auth_protocol, auth_password=snmp_conf.auth_pass)
+
+    def send_snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> Tuple[str, str]:
+        mib_object = easysnmp.snmp_get(oid=snmp_query.oid, hostname=snmpd_location, version=snmp_conf.version, 
+            security_level=snmp_conf.security_level, security_username=snmp_conf.user_name, 
+            privacy_protocol=snmp_conf.privacy_protocol, privacy_password=snmp_conf.priv_pass,
+            auth_protocol=snmp_conf.auth_protocol, auth_password=snmp_conf.auth_pass)
+        return mib_object.value, mib_object.snmp_type

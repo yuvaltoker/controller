@@ -71,9 +71,11 @@ class SnmpTest(Test):
 
     def set_command(self, command: str) -> None:
         if command == 'READONLY':
-            self.command = 'get'
+            self.command = 'only_get'
         elif command == 'SETTABLE':
             self.command = 'set'
+        elif command == 'READABLE':
+            self.command = 'get'
 
     def test_to_json(self) -> Dict[str, Any]:
         json_test = {}

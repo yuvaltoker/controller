@@ -19,6 +19,9 @@ services:
                     - DB_NAME=rri
                     - TIME_DELAY=2
                     - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
+                    - PRIV_PASS=yuval12345
+                    - AUTH_PASS=yuval12321
+                    - USER_NAME=mynewuser
                     - STATE=testing
                     # STATE is for distiguishing between 'testing' state and 'production' state, and its purpose is  
                     # to know where the snmpd is located, in snmpd container (when testing), or on the ip address of the modem (when on production)
