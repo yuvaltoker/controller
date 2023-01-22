@@ -64,7 +64,7 @@ class DlepTest(Test):
 @dataclass
 class SnmpTest(Test):
     oid: str = field(default='', init=False)
-    # command can be READONLY/SETTABLE (get/set)
+    # command can be READONLY/SETTABLE/READABLE (only_get/set,get)
     command: str = field(default='', init=False)
     mib_type: str = field(default='', init=False)
     mib_value: str = field(default='', init=False)

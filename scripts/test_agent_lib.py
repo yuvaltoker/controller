@@ -475,34 +475,58 @@ class SnmpTestExecuter(TestExecuter):
         has_passed = self.command_dict[test.command](snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location)
         return has_passed
 
-    def snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> bool:
+    def snmpget(self, snmp_query: SnmpQuery, snmpd_location: str) -> bool:
         '''handles the case of command=READABLE'''
-        if snmp_query.mib_value != '':
-            '''Expected value should only be on the command READONLY'''
-            return False
         try:
             mib_value, mib_type = self.send_snmpget(snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location)
         except Exception as e:
             return False
-        if snmp_query.mib_type != '' and snmp_query.mib_type != mib_type:
+        if snmp_query.mib_type == '' or snmp_query.mib_type != mib_type:
             return False
+        if snmp_query.mib_value != '':
+            if mib_type == 'ECTET_STRING':
+                if snmp_query.mib_value != mib_value:
+                    return False
+            elif mib_type == 'INTEGER':
+                if snmp_query.mib_value.startswith('>'):
+                    if not (mib_value > int(snmp_query.mib_value[1:])):
+                        return False
+                elif snmp_query.mib_value.startswith('='):
+                    if not (mib_value == int(snmp_query.mib_value[1:])):
+                        return False
+                elif snmp_query.mib_value.startswith('<'):
+                    if not (mib_value < int(snmp_query.mib_value[1:])):
+                        return False
+                else:
+                    return False
         return True
         
-
-    def snmpset(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> bool:
+    def snmpset(self, snmp_query: SnmpQuery, snmpd_location: str) -> bool:
         '''handles the case of command=SETTABLE'''
-        if snmp_query.mib_value != '' or snmp_query.mib_type == '':
-            '''Expected value should only be on the command READONLY and SETTABLE should conntain specification of mib_type'''
-            return False
+        '''to preserve it's original value we will first store the value, then set it twice, once with random value, later with the original value'''
         try:
+            # storing the original value in mib_value
+            mib_value, mib_type = self.send_snmpget(snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location)
+            # preparing the next value into snmp_query.mib_value, the value will be integer so that it will handle both str&&int cases
+            snmp_query.mib_value = '123'
+            result = self.send_snmpset(snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location)
+            if result == False:
+                return False
+            # setting the original value back
+            snmp_query.mib_value = mib_value
             result = self.send_snmpset(snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location)
         except Exception as e:
             return False
-        return result
+        return True
 
-    def only_snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str) -> bool:
+    def only_snmpget(self, snmp_query: SnmpQuery, snmpd_location: str) -> bool:
         '''handles the case of command=READONLY'''
-        pass
+        '''we will call readable function, if it works then we will try to set, if it sets then failed, if not then success'''
+        result = self.snmpget(snmp_query=snmp_query, snmpd_location=snmpd_location)
+        if result is False:
+            return False
+        result = self.snmpset(snmp_query=snmp_query, snmpd_location=snmpd_location)
+        return not result
 
     # For future use, the snmp_set and snmp_get of easysnmp can throw the following Errors:
     # EasySNMPTimeoutError, EasySNMPConnectionError, EasySNMPError, EasySNMPNoSuchObjectError, 
