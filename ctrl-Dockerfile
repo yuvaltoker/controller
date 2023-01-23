@@ -36,9 +36,11 @@ RUN pip3 install pymongo pandas
 #      snmp dependencies      #
 ###############################
 
+RUN apt update && apt upgrade -y
+
 RUN apt-get install -y build-essential vim snmp snmpd libsnmp-dev snmp-mibs-downloader gcc python-dev
 RUN pip3 install easysnmp
-COPY ./scripts//MY-MIB.txt /usr/share/snmp/mibs/
+COPY ./scripts//MY_MIB.txt /usr/share/snmp/mibs/
 RUN rm -f /etc/snmp/snmp.conf
 
 #####################################
