@@ -504,7 +504,7 @@ class SnmpTestExecuter(TestExecuter):
     def snmpget(self, snmp_query: SnmpQuery, snmpd_location: str, mdb_handler: MongodbHandler) -> bool:
         '''handles the case of command=READABLE'''
         mib_value, mib_type, status = self.send_snmpget(snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location, mdb_handler=mdb_handler)
-        if status == 'F' or snmp_query.mib_type != mib_type:
+        if status == False or snmp_query.mib_type != mib_type:
             return False
         if snmp_query.mib_value != '':
             if mib_type == 'ECTET_STRING':
@@ -527,20 +527,20 @@ class SnmpTestExecuter(TestExecuter):
     def snmpset(self, snmp_query: SnmpQuery, snmpd_location: str, mdb_handler: MongodbHandler) -> bool:
         '''handles the case of command=SETTABLE'''
         '''to preserve it's original value we will first store the value, then set it twice, once with random value, later with the original value'''
-        try:
-            # storing the original value in mib_value
-            mib_value, mib_type, status = self.send_snmpget(snmp_conf=self.snmp_conf, snmp_query=snmp_query, 
-                snmpd_location=snmpd_location, mdb_handler=mdb_handler)
-            # preparing the next value into snmp_query.mib_value, the value will be integer so that it will handle both str&&int cases
-            snmp_query.mib_value = '123'
-            result, request_time, response_time = self.send_snmpset(snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location, mdb_handler=mdb_handler)
-            if result == False:
-                return False
-            # setting the original value back
-            snmp_query.mib_value = mib_value
-            result, request_time, response_time = self.send_snmpset(snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location, mdb_handler=mdb_handler)
-        except Exception as e:
+        # storing the original value in mib_value
+        mib_value, mib_type, status = self.send_snmpget(snmp_conf=self.snmp_conf, snmp_query=snmp_query, 
+            snmpd_location=snmpd_location, mdb_handler=mdb_handler)
+        if status == False:
+            # taking into account that if a mib is settable he is also gettable
             return False
+        # preparing the next value into snmp_query.mib_value, the value will be integer so that it will handle both str&&int cases
+        snmp_query.mib_value = '123'
+        result = self.send_snmpset(snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location, mdb_handler=mdb_handler)
+        if result == False:
+            return False
+        # setting the original value back
+        snmp_query.mib_value = mib_value
+        result = self.send_snmpset(snmp_conf=self.snmp_conf, snmp_query=snmp_query, snmpd_location=snmpd_location, mdb_handler=mdb_handler)
         return True
 
     def only_snmpget(self, snmp_query: SnmpQuery, snmpd_location: str, mdb_handler: MongodbHandler) -> bool:
@@ -552,37 +552,54 @@ class SnmpTestExecuter(TestExecuter):
         result = self.snmpset(snmp_query=snmp_query, snmpd_location=snmpd_location)
         return not result
 
-    # For future use, the snmp_set and snmp_get of easysnmp can throw the following Errors:
-    # EasySNMPTimeoutError, EasySNMPConnectionError, EasySNMPError, EasySNMPNoSuchObjectError, 
-    # EasySNMPNoSuchInstanceError, EasySNMPNoSuchNameError, EasySNMPBadValueError
-    # It's also possible to raise a Python's built-in Exception if the request can't be parsed correctly.
-    def send_snmpset(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str, mdb_handler: MongodbHandler) -> Tuple[bool, str, str]:
-        '''snmp_set of easysnmp lib returns True/False, and timestamps of request and response'''
-        request_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-        result = easysnmp.snmp_set(oid=snmp_query.oid, value=snmp_query.mib_value, data_type=snmp_query.mib_type,
-            hostname=snmpd_location, version=snmp_conf.version, 
-            security_level=snmp_conf.security_level, security_username=snmp_conf.user_name, 
-            privacy_protocol=snmp_conf.privacy_protocol, privacy_password=snmp_conf.priv_pass,
-            auth_protocol=snmp_conf.auth_protocol, auth_password=snmp_conf.auth_pass)
-        response_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-        return result, request_time, response_time
-
-    def send_snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str, mdb_handler: MongodbHandler) -> Tuple[str, str, str]:
-        '''snmp_get of easysnmp lib returns mib value, mib type, and Failed("F")/Success("S")'''
-        request_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+    def send_snmpset(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str, mdb_handler: MongodbHandler) -> bool:
+        '''snmp_set of easysnmp lib returns True/False, and Failed("F")/Success("S")'''
         oid = easysnmp.ObjectIdentity(snmp_query.oid)
         status='S'
         name='unknown'
+        # getting time stamp just before the request is sent
+        request_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        try:
+            mib_object = easysnmp.snmp_set(oid=oid, value=snmp_query.mib_value, data_type=snmp_query.mib_type,
+                hostname=snmpd_location, version=snmp_conf.version, 
+                security_level=snmp_conf.security_level, security_username=snmp_conf.user_name, 
+                privacy_protocol=snmp_conf.privacy_protocol, privacy_password=snmp_conf.priv_pass,
+                auth_protocol=snmp_conf.auth_protocol, auth_password=snmp_conf.auth_pass)
+            name = mib_object.oid_index.label
+        except (EasySNMPTimeoutError, EasySNMPConnectionError, EasySNMPNoSuchObjectError, 
+            EasySNMPNoSuchInstanceError, EasySNMPNoSuchNameError, EasySNMPBadValueError) as e:
+            status='F'
+        # getting time stamp right after the request is sent
+        response_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        # inserts both request and response to db
+        self.insert_snmp_json(type='snmpRequest', method='set', destination=snmpd_location,
+            oid=snmp_query.oid, name=name, time=request_time,
+            status=status, mdb_handler=mdb_handler)
+        self.insert_snmp_json(type='snmpResponse', method='set', destination=snmpd_location,
+            oid=snmp_query.oid, name=name, time=response_time,
+            status=status, mdb_handler=mdb_handler)
+
+        if status == 'S':
+            return True
+        return False
+
+    def send_snmpget(self, snmp_conf: SnmpConfiguration ,snmp_query: SnmpQuery, snmpd_location: str, mdb_handler: MongodbHandler) -> Tuple[str, str, bool]:
+        '''snmp_get of easysnmp lib returns mib value, mib type, and Failed("F")/Success("S")'''
+        oid = easysnmp.ObjectIdentity(snmp_query.oid)
+        status='S'
+        name='unknown'
+        # getting time stamp just before the request is sent
+        request_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
         try:
             mib_object = easysnmp.snmp_get(oid=oid, hostname=snmpd_location, version=snmp_conf.version, 
                 security_level=snmp_conf.security_level, security_username=snmp_conf.user_name, 
                 privacy_protocol=snmp_conf.privacy_protocol, privacy_password=snmp_conf.priv_pass,
                 auth_protocol=snmp_conf.auth_protocol, auth_password=snmp_conf.auth_pass)
-            name = mib_object.oid_index
+            name = mib_object.oid_index.label
         except (EasySNMPTimeoutError, EasySNMPConnectionError, EasySNMPNoSuchObjectError, 
             EasySNMPNoSuchInstanceError, EasySNMPNoSuchNameError, EasySNMPBadValueError) as e:
             status='F'
-
+        # getting time stamp right after the request is sent
         response_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
         # inserts both request and response to db
         self.insert_snmp_json(type='snmpRequest', method='get', destination=snmpd_location,
@@ -591,4 +608,8 @@ class SnmpTestExecuter(TestExecuter):
         self.insert_snmp_json(type='snmpResponse', method='get', destination=snmpd_location,
             oid=snmp_query.oid, name=name, time=response_time,
             status=status, mdb_handler=mdb_handler)
-        return mib_object.value, mib_object.snmp_type, status
+
+        if status == 'S':
+            return mib_object.value, mib_object.snmp_type, True
+        return mib_object.value, mib_object.snmp_type, False
+        
