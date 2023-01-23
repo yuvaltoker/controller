@@ -293,7 +293,8 @@ class SnmpTestParser(TestParser):
 
     def set_oid(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'OID' keyword, then the oid itself
-        test.oid=line[1]
+        # plus, cutting the "" at the start and at the end of the word
+        test.oid = line[1][1:-1]
         # removing the 'OID' keyword and the oid itself
         self.cut_next_words(word_list=line, num_of_words=2)
 
@@ -311,7 +312,8 @@ class SnmpTestParser(TestParser):
 
     def set_mib_value(self, test: Test, line: List[str]) -> None:
         # first word in list contains the 'WITH_VALUE' keyword, then the value expression itself
-        test.mib_value = line[1]
+        # plus, cutting the "" at the start and at the end of the word
+        test.mib_value = line[1][1:-1]
         # removing the 'WITH_VALUE' keyword and the value expression itself
         self.cut_next_words(word_list=line, num_of_words=2)
 
