@@ -68,9 +68,7 @@ class TestFilesHandler:
     def execute_tests_files(self, mdb_handler: MongodbHandler, rmq_handler: RabbitmqHandler, test_files_paths: str) -> None:
         '''execute test files'''
         for test_file_path in test_files_paths:
-            # currently the app stub is working without the /tests/ in the begginning of the path in Configuration collection.
-            # so the added '/tests/' should be removed once it get fixed by the writers of the app
-            test_file = self.test_files['/tests/{}'.format(test_file_path)]
+            test_file = self.test_files['{}'.format(test_file_path)]
             self.test_file_executer.execute_test_file(mdb_handler=mdb_handler, 
                 rmq_handler=rmq_handler, 
                 test_file=test_file)
