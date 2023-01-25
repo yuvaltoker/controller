@@ -30,7 +30,7 @@ services:
 
         app:
                 hostname: app
-                image: samyon196/rri-app-stub:0.0.1
+                image: samyon196/rri-app-stub:0.0.3
                 networks: 
                   - lan
                 environment:
