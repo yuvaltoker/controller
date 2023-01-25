@@ -408,7 +408,7 @@ class SnmpTestExecuter(TestExecuter):
     def exec_test(self, test: Test) -> bool:
         '''returns if test pass/fail (True/False)'''
         # command can be send_snmpget/send_snmpset
-        command_function = self.command_dict[test.get_command()]
+        # command_function = self.command_dict[test.get_command()]
         
         return True
 
