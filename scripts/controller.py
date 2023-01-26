@@ -85,7 +85,7 @@ def create_available_test_suites_json(json_paths: Dict[str, List[str]]) -> Dict[
     for key, val in json_paths.items():
         test_suite = {}
         test_suite['Name'] = key
-        test_suite['Tests Files'] = val
+        test_suite['TestFiles'] = val
 
         # insert() takes 2 arguments, so in order to insert to the end, we'll give position as the end of the list
         test_suites.insert(len(test_suites), test_suite)
@@ -94,8 +94,9 @@ def create_available_test_suites_json(json_paths: Dict[str, List[str]]) -> Dict[
 
 # first function to be called
 # this function handles reading test files and parsing them, inserts @available_test_suites to mongoDB and sends over rabbitmq the uid of the inserted document
-# returning parsed test files list as {'path1' : [subpath1,subpath2,...], 'path2' : [subpath1,subpath2,...], ...}
-def make_test_list(test_files_handler: TestFilesHandler) -> Dict[str, List[str]]:
+# returns None
+# see in Notion, 'Configuration' collection, where 'ConfigType' is 'AvailableTestSuites'
+def make_test_list(test_files_handler: TestFilesHandler) -> None:
     message = 'ctrl: test list in proggress...'
     logger.info(message)
     tests_path = '/tests/*'
@@ -103,7 +104,8 @@ def make_test_list(test_files_handler: TestFilesHandler) -> Dict[str, List[str]]
     all_files = create_basic_files_list(tests_path)
     #filtering bad files
     test_files_handler.parse_files(all_files)
-    # next line returns a dict of files which succeeded the parsing as {'path1' : [subpath1,subpath2,...], 'path2' : [subpath1,subpath2,...], ...}
+    # next line returns a dict of files which succeeded the parsing as:
+    # { folder1 : [{ 'FilePath' : <file_path>, 'TestCount' : <num_of_tests>}], folder2 : [{ 'FilePath' : <file_path>, 'TestCount' : <num_of_tests>}] }
     parsed_files_json = test_files_handler.get_test_files_arranged_by_folders()
     logger.info('parsed_files_json: {}'.format(parsed_files_json))
     available_test_suites = create_available_test_suites_json(parsed_files_json)
@@ -175,7 +177,7 @@ def all_results_ready() -> None:
     
 def controller_flow() -> None:
     test_files_handler = TestFilesHandler(logging_level=logging_level)
-    parsed_testfile_list = make_test_list(test_files_handler=test_files_handler)
+    make_test_list(test_files_handler=test_files_handler)
     setup_ready_event_handler()
     time.sleep(TIME_DELAY)
     run_tests(test_files_handler=test_files_handler)

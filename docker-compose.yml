@@ -17,7 +17,7 @@ services:
                     - MONGO_INITDB_ROOT_PASSWORD=example
                     - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
                     - DB_NAME=rri
-                    - TIME_DELAY=2
+                    - TIME_DELAY=1
                     - WAIT_HOSTS=rabbitmq:5672,mongodb:27017
                     - PRIV_PASS=yuval12345
                     - AUTH_PASS=yuval12321

@@ -172,11 +172,12 @@ class TestFilesParser:
 
     
     def get_test_files_arranged_by_folders(self) -> Dict[str, List[str]]:
-        '''returns a dict of files which succeeded the parsing as {folder1 : [path1,path2,...], folder2 : [path1,path2,...]}'''
+        '''returns a dict of files which succeeded the parsing as:'''
+        '''{ folder1 : [{ 'FilePath' : <file_path>, 'TestCount' : <num_of_tests>}], folder2 : [{ 'FilePath' : <file_path>, 'TestCount' : <num_of_tests>}] }'''
         dict_all_tests_files = {}
-        for file in self.test_files:
+        for file_with_test_count in self.files_with_test_count:
             # getting the file_path
-            file_path = file.get_file_name()
+            file_path = file_with_test_count['FilePath']
             # getting the subpath given the path is /tests/subpath/...
             sub_path = file_path.split('/')[2]
             self.logger.info('subpath is {} for {}'.format(sub_path, file_path))
@@ -185,7 +186,7 @@ class TestFilesParser:
                 dict_all_tests_files[sub_path] = []
             # getting the object object of { 'Path' : <file_path>, 'TestCount' : <num_of_tests>}
             # append the sub_path list in the dictionary with the file_path
-            dict_all_tests_files[sub_path].append(file.files)
+            dict_all_tests_files[sub_path].append(file_with_test_count)
         return dict_all_tests_files
 
     def get_test_files_dict(self) -> Dict[str, TestFile]:
