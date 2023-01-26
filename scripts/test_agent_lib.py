@@ -90,6 +90,7 @@ class TestFilesParser:
         for parser_class in self.list_test_parser_types:
             parser_class(parsers_dict=self.dict_test_parsers)
         self.test_files = []
+        self.files_with_test_count = []
         # logging
         logger = logging.getLogger('test_parser')
         configure_logger_logging(logger, logging_level, logging_file)
@@ -163,7 +164,11 @@ class TestFilesParser:
             self.logger.error('file {} cannot be parsed. error message -> {}'.format(file, e.message))
             # stopping the function in order to not add the file
             return 
+        file_with_test_count = {}
+        file_with_test_count['FilePath'] = test_file.file_name
+        file_with_test_count['TestCount'] = len(test_file.tests)
         self.test_files.append(test_file)
+        self.files_with_test_count.append(file_with_test_count)
 
     
     def get_test_files_arranged_by_folders(self) -> Dict[str, List[str]]:
@@ -178,8 +183,9 @@ class TestFilesParser:
             # in case it's the first time of seeing this sub_path, creating a list for this sub_path
             if sub_path not in dict_all_tests_files:
                 dict_all_tests_files[sub_path] = []
+            # getting the object object of { 'Path' : <file_path>, 'TestCount' : <num_of_tests>}
             # append the sub_path list in the dictionary with the file_path
-            dict_all_tests_files[sub_path].append(file_path)
+            dict_all_tests_files[sub_path].append(file.files)
         return dict_all_tests_files
 
     def get_test_files_dict(self) -> Dict[str, TestFile]:
