@@ -13,6 +13,7 @@ class Test(ABC):
     test_type: str = field(default='', init=True)
     name: str = field(default='', init=False)
     expect: bool = field(default=False, init=False)
+    description: str = field(default='', init=False)
 
     # the meaning of the next function is when creating new type of test (@DlepTest, @SnmpTest, etc...) this function has to be override
     @abstractmethod

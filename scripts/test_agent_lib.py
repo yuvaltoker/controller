@@ -218,6 +218,9 @@ class TestParser(ABC):
             if not self.is_keyword_in_dict(dict=self.dict_of_parser_commands,
                 keyword=line[0]):
                 raise CannotBeParsedError('keyword {} not found '.format(''.join(line[0])))
+            # get test description into test.description if it's the first time we encounter this function in test
+            if test.description == '':
+                test.description = ' '.join(line)
             # select the right keyword for the first word in line, then pass the rest of the line to function
             self.dict_of_parser_commands[line[0]](test=test,
                 line=line)
@@ -343,19 +346,27 @@ class TestFilesExecuter:
         configure_logger_logging(logger, logging_level, logging_file)
         self.logger = logger
 
-    def build_result_json(self, name: str, result: bool) -> Dict[str, str]:
-        return {'name' : name, 'result' : self.dict_of_optional_results[result]}
+    def build_result_json(self, test_type: str, location: str, name: str, description: str, result: bool) -> Dict[str, str]:
+        return {'type' : test_type,
+            'location' : location,
+            'name' : name,
+            'test' : description,
+            'result' : self.dict_of_optional_results[result]
+            }
     
     def execute_test_file(self, mdb_handler: MongodbHandler, rmq_handler: RabbitmqHandler, test_file: TestFile, device_ip: str) -> None:
+        file_location = test_file.file_name
         for test in test_file.tests:
             # handling json result parts:
             # name of test-
             test_name = test.name
+            test_type = test.test_type
+            description = test.description
             # executing the test and getting result-
             test_result = self.exec_test(test=test, mdb_handler=mdb_handler, device_ip=device_ip)
             # creating result json {name : name, result : 'Pass'/'Fail'}
-            json_document_result = self.build_result_json(name=test_name, result=test_result)
-            result_uid = mdb_handler.insert_document('Test Results', json_document_result)
+            json_document_result = self.build_result_json(test_type=test_type, location=file_location, name=test_name, description=description, result=test_result)
+            result_uid = mdb_handler.insert_document('TestResults', json_document_result)
             message = 'ctrl: got result - %s' % result_uid
             self.logger.info(message)
             rmq_handler.send('', 'results', str(result_uid))
@@ -606,7 +617,6 @@ class SnmpTestExecuter(TestExecuter):
                 privacy_protocol=snmp_conf.privacy_protocol, privacy_password=snmp_conf.priv_pass,
                 auth_protocol=snmp_conf.auth_protocol, auth_password=snmp_conf.auth_pass)
             name = mib_object.oid_index
-            print('aaaaaaaaaaaaaaaaaaaaaaaaaaaaa\noid - {}\nhost name - {}\nversion - {}, type - {}'.format(snmp_query.oid, snmpd_location, snmp_conf.version, mib_object.snmp_type))
         except Exception as e:
             print('Exception in send_snmpget: {}'.format(e))
             status='F'
