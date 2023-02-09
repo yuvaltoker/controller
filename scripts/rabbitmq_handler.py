@@ -43,22 +43,23 @@ def configure_logger_logging(logger, logging_level, logging_file):
 
 class RabbitmqHandler:
     def __init__(self, logging_level, logging_file = None):
-        self.queue_names = os.getenv('QUEUE_NAMES').split(',')
-
         self.rabbitmq_host = os.getenv('RMQ_HOST')
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(self.rabbitmq_host))
         self.channel = self.connection.channel()
         
         # declaring the queues
-        for queue_name in self.queue_names:
-            self.channel.queue_declare(queue=queue_name)
-            if queue_name == 'pdfs':
-                # creating a single callback queue for the pdfs queue, in order to create the rpc behaviour
-                result = self.channel.queue_declare(queue='', exclusive=True)
-                self.callback_queue_pdfs = result.method.queue
-                self.channel.basic_consume(queue=self.callback_queue_pdfs, on_message_callback=self.on_response_pdf, auto_ack=True)
+        self.channel.queue_declare(queue='tests_list')
+        self.channel.queue_declare(queue='setup_ready')
+        self.channel.queue_declare(queue='results')
+        self.channel.queue_declare(queue='all_results_ready')
+        self.channel.queue_declare(queue='pdfs')
+        self.channel.queue_declare(queue='pdf_ready')
 
+        # creating a single callback queue for the pdfs queue, in order to create the rpc behaviour
+        result = self.channel.queue_declare(queue='', exclusive=True)
+        self.callback_queue_pdfs = result.method.queue
+        self.channel.basic_consume(queue=self.callback_queue_pdfs, on_message_callback=self.on_response_pdf, auto_ack=True)
 
         # logging
         logger = logging.getLogger('rmq')

@@ -12,7 +12,6 @@ services:
                     - lan
                 environment:
                     - RMQ_HOST=rabbitmq
-                    - QUEUE_NAMES=tests_list,setup_ready,results,all_results_ready,pdfs,pdf_ready
                     - MONGO_INITDB_ROOT_USERNAME=root
                     - MONGO_INITDB_ROOT_PASSWORD=example
                     - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongodb:27017/
