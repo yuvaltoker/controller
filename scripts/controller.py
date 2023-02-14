@@ -154,9 +154,8 @@ def run_tests(test_files_handler: TestFilesHandler) -> None:
     # getting filtered document by ConfigType, then getting
     chosen_paths = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {})['SuitesToRun']
     logger.info(chosen_paths)
-    #device_id = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {})['SelectedDevice']
-    #device_ip = mdb_handler.get_one_filtered_with_fields('Devices', {'_id': device_id}, {})['ip']
-    device_ip = mdb_handler.get_one_filtered_with_fields('Devices', {}, {})['Ip']
+    device_id = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {})['SelectedDevice']
+    device_ip = mdb_handler.get_one_filtered_with_fields('Devices', {'_id': device_id}, {})['ip']
     test_files_handler.execute_tests_files(mdb_handler=mdb_handler, 
         rmq_handler=rmq_handler, 
         test_files_paths=chosen_paths,
