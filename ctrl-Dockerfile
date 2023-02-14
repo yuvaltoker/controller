@@ -15,14 +15,6 @@ RUN apt-get install -y python3.8
 RUN apt install -y python3-pip curl
 RUN pip3 install pika
 RUN pip3 install mpire
-### 
-#RUN apt install -y python curl
-#RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py && python get-pip.py
-#RUN python -m pip install pika --upgrade
-#RUN pip install --upgrade pip enum34
-# for multiproccessing-
-#RUN pip install mpire
-###
 
 ##################################
 #      mongodb dependencies      #
@@ -37,7 +29,6 @@ RUN pip3 install pymongo pandas
 ###############################
 
 RUN apt update && apt upgrade -y
-
 RUN apt-get install -y build-essential vim snmp snmpd libsnmp-dev snmp-mibs-downloader gcc python-dev
 RUN pip3 install easysnmp
 RUN rm -f /etc/snmp/snmp.conf
@@ -51,21 +42,21 @@ RUN pip3 install waiting
 ##################################################
 #      waiting for other containers service      #
 ##################################################
-## Add the wait script to the image
+# Add the wait script to the image
 ADD https://github.com/ufoscout/docker-compose-wait/releases/download/2.9.0/wait /wait
 RUN chmod +x /wait
 
+##############################
+#      copying the code      #
+##############################
 RUN mkdir /controller-scripts
-
-## Add your application to the docker image (comment out in case of working with volume)
+# Add your application to the docker image (comment out in case of working with volume)
 ADD ./scripts/controller.py /controller-scripts
 ADD ./scripts/rabbitmq_handler.py /controller-scripts
 ADD ./scripts/mongodb_handler.py /controller-scripts
 ADD ./scripts/test_agent_lib.py /controller-scripts
 ADD ./scripts/test_lib.py /controller-scripts
-
+# mamking the main file executable
 RUN chmod +x /controller-scripts/controller.py
-
-
-## Launch the wait tool and then your application
+# Launch the wait tool and then your application
 CMD /wait && python3 /controller-scripts/controller.py
