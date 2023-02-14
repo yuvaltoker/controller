@@ -152,10 +152,11 @@ def pdfs_ready_event_handler() -> str:
 
 def run_tests(test_files_handler: TestFilesHandler) -> None:
     # getting filtered document by ConfigType, then getting
-    chosen_paths = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {})['SuitesToRun']
+    chosen_paths = mdb_handler.get_one_filtered_with_fields(collection_name='Configuration', query={'ConfigType': 'TestConfig'}, fields={})['SuitesToRun']
     logger.info(chosen_paths)
-    device_id = mdb_handler.get_one_filtered_with_fields('Configuration', {'ConfigType': 'TestConfig'}, {})['SelectedDevice']
-    device_ip = mdb_handler.get_one_filtered_with_fields('Devices', {'_id': device_id}, {})['ip']
+    json_device_id = mdb_handler.get_one_filtered_with_fields(collection_name='Configuration', query={'ConfigType': 'TestConfig'}, fields={'SelectedDevice'})
+    print(f'json-type: {type(json_device_id)}\nstr: {type(str(json_device_id))}\njson: {json_device_id}')
+    device_ip = mdb_handler.get_one_filtered_with_fields(collection_name='Devices', query={'_id': str(json_device_id)}, fields={'ip'})
     test_files_handler.execute_tests_files(mdb_handler=mdb_handler, 
         rmq_handler=rmq_handler, 
         test_files_paths=chosen_paths,
